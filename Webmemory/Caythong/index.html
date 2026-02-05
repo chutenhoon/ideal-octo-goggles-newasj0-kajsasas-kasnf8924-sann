@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D Christmas Magic</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #050505;
+            background: radial-gradient(circle at center, #1a0b0b 0%, #000000 100%);
+            font-family: 'Arial', sans-serif;
+        }
+        canvas {
+            display: block;
+            outline: none;
+        }
+        #ui-layer {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            animation: pulse 2s infinite;
+            z-index: 10;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+        #love-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+            z-index: 5;
+            width: 90%;
+        }
+        #love-message.visible {
+            opacity: 1;
+        }
+        .love-text {
+            font-family: 'Dancing Script', cursive;
+            color: #ffffff;
+            font-size: 5rem;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.9), 0 0 40px rgba(255, 20, 100, 1), 0 0 60px rgba(255, 20, 100, 0.6);
+            margin: 0;
+            line-height: 1.1;
+        }
+        .sub-text {
+            font-family: 'Dancing Script', cursive;
+            color: #ffdae9;
+            font-size: 3rem;
+            margin-top: 15px;
+            text-shadow: 0 0 15px rgba(255, 20, 100, 0.8);
+        }
+        @media (max-width: 768px) {
+            .love-text { font-size: 3.2rem; }
+            .sub-text { font-size: 2.2rem; }
+            #ui-layer { bottom: 80px; font-size: 11px; }
+        }
+        @keyframes pulse {
+            0% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+            100% { opacity: 0.4; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="ui-layer">Chạm để bắt đầu</div>
+    <div id="love-message">
+        <h1 class="love-text">Yêu Em</h1>
+        <h2 class="sub-text">Lê Nguyễn Lan Anh</h2>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const PARTICLE_COUNT = 20000; 
+        const STAR_PARTICLES = 2500; 
+        const PARTICLE_SIZE = 0.45;
+        const BOX_COUNT = 8;
+        const ANIMATION_SPEED = 0.035;
+        const COLOR_TREE_LEAF = new THREE.Color(0x00ff55);
+        const COLOR_TREE_LIGHT = new THREE.Color(0xffcc00);
+        const COLOR_STAR = new THREE.Color(0xffdd44); 
+        const COLOR_GIFT_PALETTE = [0xff2244, 0x2288ff, 0xffdd22, 0xff8822, 0x22ffcc, 0xff22ff];
+        const COLOR_HEART = new THREE.Color(0xff0055); 
+        let scene, camera, renderer, particleSystem, geometry;
+        let positionsTree = [], colorsTree = [];
+        let positionsGift = [], colorsGift = [];
+        let positionsHeart = [], colorsHeart = [];
+        let appState = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+        let isDragging = false;
+        let hasRotatedGifts = false;
+        let rotateAmount = 0;
+        let previousMousePosition = { x: 0, y: 0 };
+        let clickStartTime = 0;
+        function init() {
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x050505, 0.012);
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            updateCameraPosition();
+            camera.lookAt(new THREE.Vector3(0, 0, 0));
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+            generateTreeData();
+            generateGiftData();
+            generateHeartData();
+            createParticles();
+            window.addEventListener('resize', onWindowResize, false);
+            document.addEventListener('mousedown', onPointerDown, false);
+            document.addEventListener('touchstart', onPointerDown, { passive: false });
+            document.addEventListener('mousemove', onPointerMove, false);
+            document.addEventListener('touchmove', onPointerMove, { passive: false });
+            document.addEventListener('mouseup', onPointerUp, false);
+            document.addEventListener('touchend', onPointerUp, false);
+            animate();
+        }
+        function updateCameraPosition() {
+            const isMobile = window.innerWidth < 768;
+            camera.position.z = isMobile ? 65 : 45;
+            camera.position.y = 2;
+        }
+        function getSprite() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const context = canvas.getContext('2d');
+            const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            gradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.8)');
+            gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.2)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            context.fillStyle = gradient;
+            context.beginPath();
+            context.arc(32, 32, 32, 0, Math.PI * 2);
+            context.fill();
+            const texture = new THREE.Texture(canvas);
+            texture.needsUpdate = true;
+            return texture;
+        }
+        function getStarPoint(t, radius) {
+            const segments = 10;
+            const angleStep = (Math.PI * 2) / segments; 
+            const segmentIndex = Math.floor(t / angleStep);
+            const localProgress = (t % angleStep) / angleStep;
+            const outerRadius = radius;
+            const innerRadius = radius * 0.4;
+            let rStart, rEnd, aStart, aEnd;
+            if (segmentIndex % 2 === 0) {
+                rStart = outerRadius; rEnd = innerRadius;
+                aStart = segmentIndex * angleStep; aEnd = (segmentIndex + 1) * angleStep;
+            } else {
+                rStart = innerRadius; rEnd = outerRadius;
+                aStart = segmentIndex * angleStep; aEnd = (segmentIndex + 1) * angleStep;
+            }
+            const rotationOffset = Math.PI / 2; 
+            const x1 = Math.cos(aStart + rotationOffset) * rStart;
+            const y1 = Math.sin(aStart + rotationOffset) * rStart;
+            const x2 = Math.cos(aEnd + rotationOffset) * rEnd;
+            const y2 = Math.sin(aEnd + rotationOffset) * rEnd;
+            const x = x1 + (x2 - x1) * localProgress;
+            const y = y1 + (y2 - y1) * localProgress;
+            return { x, y };
+        }
+        function generateTreeData() {
+            positionsTree = new Float32Array(PARTICLE_COUNT * 3);
+            colorsTree = new Float32Array(PARTICLE_COUNT * 3);
+            const treeHeight = 28;
+            const treeYOffset = -12;
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const i3 = i * 3;
+                let x, y, z, color;
+                if (i < STAR_PARTICLES) {
+                    const t = Math.random() * Math.PI * 2;
+                    const radius = 4.5; 
+                    const pt = getStarPoint(t, radius);
+                    x = pt.x;
+                    y = pt.y + (treeHeight + treeYOffset + 3.0);
+                    z = (Math.random() - 0.5) * 1.2; 
+                    if (Math.random() > 0.85) {
+                        const auraScale = 1.0 + Math.random() * 0.4;
+                        x *= auraScale;
+                        y = (y - (treeHeight + treeYOffset + 3.0)) * auraScale + (treeHeight + treeYOffset + 3.0);
+                        z *= 2.0; 
+                    }
+                    color = COLOR_STAR.clone();
+                    if (Math.random() > 0.3) color.setHex(0xffdd44); 
+                    else color.setHex(0xffffff); 
+                } else {
+                    y = Math.random() * treeHeight;
+                    const radius = (treeHeight - y) * 0.5 + (Math.random() - 0.5) * 1.5; 
+                    const angle = y * 4.5 + Math.random() * Math.PI * 2; 
+                    x = Math.cos(angle) * radius;
+                    z = Math.sin(angle) * radius;
+                    y += treeYOffset;
+                    if (Math.random() > 0.90) { 
+                        const r = Math.random();
+                        if(r < 0.33) color = COLOR_TREE_LIGHT; 
+                        else if(r < 0.66) color = new THREE.Color(0xff3300);
+                        else color = new THREE.Color(0x33ffff);
+                    } else { 
+                        color = COLOR_TREE_LEAF.clone();
+                        color.offsetHSL(0, 0.1, (Math.random() - 0.5) * 0.3);
+                    }
+                }
+                positionsTree[i3] = x;
+                positionsTree[i3 + 1] = y;
+                positionsTree[i3 + 2] = z;
+                colorsTree[i3] = color.r;
+                colorsTree[i3 + 1] = color.g;
+                colorsTree[i3 + 2] = color.b;
+            }
+        }
+        function generateGiftData() {
+            positionsGift = new Float32Array(PARTICLE_COUNT * 3);
+            colorsGift = new Float32Array(PARTICLE_COUNT * 3);
+            const particlesPerBox = Math.floor(PARTICLE_COUNT / BOX_COUNT);
+            const boxes = [];
+            const minDistance = 12; 
+            for(let j=0; j<BOX_COUNT; j++) {
+                let x, y, z, tooClose, attempts = 0;
+                do {
+                    tooClose = false;
+                    x = (Math.random() - 0.5) * 35;
+                    y = (Math.random() - 0.5) * 25;
+                    z = (Math.random() - 0.5) * 25;
+                    attempts++;
+                    for(let existing of boxes) {
+                        const dist = Math.sqrt(Math.pow(x - existing.x, 2) + Math.pow(y - existing.y, 2) + Math.pow(z - existing.z, 2));
+                        if (dist < minDistance) { tooClose = true; break; }
+                    }
+                } while (tooClose && attempts < 100);
+                boxes.push({
+                    s: 4.5 + Math.random() * 3.5, 
+                    x, y, z,
+                    c: new THREE.Color(COLOR_GIFT_PALETTE[j % COLOR_GIFT_PALETTE.length])
+                });
+            }
+            let pIndex = 0;
+            boxes.forEach(box => {
+                const limit = pIndex + particlesPerBox;
+                for (; pIndex < limit && pIndex < PARTICLE_COUNT; pIndex++) {
+                    const i3 = pIndex * 3;
+                    const bx = (Math.random() - 0.5) * box.s;
+                    const by = (Math.random() - 0.5) * box.s;
+                    const bz = (Math.random() - 0.5) * box.s;
+                    positionsGift[i3] = bx + box.x;
+                    positionsGift[i3 + 1] = by + box.y;
+                    positionsGift[i3 + 2] = bz + box.z;
+                    let color = box.c.clone();
+                    const ribbonWidth = box.s * 0.15;
+                    if (Math.abs(bx) < ribbonWidth || Math.abs(bz) < ribbonWidth) color.setHex(0xffffff); 
+                    colorsGift[i3] = color.r;
+                    colorsGift[i3 + 1] = color.g;
+                    colorsGift[i3 + 2] = color.b;
+                }
+            });
+            while(pIndex < PARTICLE_COUNT) {
+                 const i3 = pIndex * 3;
+                 positionsGift[i3] = positionsGift[i3-3];
+                 positionsGift[i3+1] = positionsGift[i3-2];
+                 positionsGift[i3+2] = positionsGift[i3-1];
+                 pIndex++;
+            }
+        }
+        function generateHeartData() {
+            positionsHeart = new Float32Array(PARTICLE_COUNT * 3);
+            colorsHeart = new Float32Array(PARTICLE_COUNT * 3);
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const i3 = i * 3;
+                const t = Math.random() * Math.PI * 2;
+                const thickness = (Math.random() - 0.5) * 6; 
+                const scale = 1.0; 
+                const x = 16 * Math.pow(Math.sin(t), 3);
+                const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+                const rOffset = Math.sqrt(Math.random()); 
+                positionsHeart[i3] = x * scale * rOffset;
+                positionsHeart[i3 + 1] = y * scale * rOffset + 3;
+                positionsHeart[i3 + 2] = thickness * rOffset;
+                let color = COLOR_HEART.clone();
+                color.offsetHSL(0, (Math.random() - 0.5)*0.1, (Math.random() - 0.5)*0.2);
+                colorsHeart[i3] = color.r;
+                colorsHeart[i3 + 1] = color.g;
+                colorsHeart[i3 + 2] = color.b;
+            }
+        }
+        function createParticles() {
+            geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positionsTree), 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colorsTree), 3));
+            const material = new THREE.PointsMaterial({
+                size: PARTICLE_SIZE,
+                map: getSprite(),
+                vertexColors: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                transparent: true,
+                opacity: 0.95
+            });
+            particleSystem = new THREE.Points(geometry, material);
+            scene.add(particleSystem);
+        }
+        function onPointerDown(event) {
+            isDragging = true;
+            clickStartTime = Date.now();
+            const x = event.clientX || (event.touches ? event.touches[0].clientX : 0);
+            const y = event.clientY || (event.touches ? event.touches[0].clientY : 0);
+            previousMousePosition = { x, y };
+        }
+        function onPointerMove(event) {
+            if (isDragging) {
+                const x = event.clientX || (event.touches ? event.touches[0].clientX : 0);
+                const y = event.clientY || (event.touches ? event.touches[0].clientY : 0);
+                const deltaX = x - previousMousePosition.x;
+                const deltaY = y - previousMousePosition.y;
+                targetRotationY += deltaX * 0.005;
+                targetRotationX += deltaY * 0.005;
+                if (appState === 1) {
+                    rotateAmount += Math.abs(deltaX) + Math.abs(deltaY);
+                    if (rotateAmount > 100) { 
+                        hasRotatedGifts = true;
+                        document.getElementById('ui-layer').innerText = "Hộp quà đã được lắc kỹ! Chạm để mở bí mật.";
+                    }
+                }
+                previousMousePosition = { x, y };
+            }
+        }
+        function onPointerUp() {
+            isDragging = false;
+            if (Date.now() - clickStartTime < 250) cycleState();
+        }
+        function cycleState() {
+            const uiText = document.getElementById('ui-layer');
+            const loveMsg = document.getElementById('love-message');
+            if (appState === 0) {
+                appState = 1; rotateAmount = 0; hasRotatedGifts = false;
+                uiText.innerText = "Hãy lắc những hộp quà (xoay màn hình) để mở...";
+                loveMsg.classList.remove('visible');
+            } else if (appState === 1) {
+                if (hasRotatedGifts) {
+                    appState = 2; uiText.innerText = "Giáng sinh an lành!";
+                    loveMsg.classList.add('visible');
+                } else {
+                    uiText.innerText = "Bạn chưa lắc quà mà! Hãy xoay chúng đi!";
+                }
+            } else if (appState === 2) {
+                appState = 0; uiText.innerText = "Chạm để bắt đầu";
+                loveMsg.classList.remove('visible');
+            }
+        }
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            updateCameraPosition();
+        }
+        function animate() {
+            requestAnimationFrame(animate);
+            let targetPos, targetCol;
+            if (appState === 0) { targetPos = positionsTree; targetCol = colorsTree; }
+            else if (appState === 1) { targetPos = positionsGift; targetCol = colorsGift; }
+            else { targetPos = positionsHeart; targetCol = colorsHeart; }
+            scene.rotation.y += (targetRotationY - scene.rotation.y) * 0.05;
+            scene.rotation.x += (targetRotationX - scene.rotation.x) * 0.05;
+            if (!isDragging) targetRotationY += 0.002; 
+            const positions = geometry.attributes.position.array;
+            const colors = geometry.attributes.color.array;
+            let needsUpdate = false;
+            if (appState === 0) {
+                for (let i = 0; i < STAR_PARTICLES; i++) {
+                    if (Math.random() > 0.96) {
+                        const i3 = i * 3;
+                        const isGold = Math.random() > 0.3; 
+                        colorsTree[i3] = 1.0;
+                        colorsTree[i3+1] = isGold ? 0.8 : 1.0;
+                        colorsTree[i3+2] = isGold ? 0.2 : 1.0;
+                    }
+                }
+            }
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const i3 = i * 3;
+                const speed = ANIMATION_SPEED + (i % 50) * 0.0005;
+                const dx = targetPos[i3] - positions[i3];
+                const dy = targetPos[i3+1] - positions[i3+1];
+                const dz = targetPos[i3+2] - positions[i3+2];
+                if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01 || Math.abs(dz) > 0.01) {
+                    positions[i3] += dx * speed;
+                    positions[i3+1] += dy * speed;
+                    positions[i3+2] += dz * speed;
+                    if (appState !== 0) {
+                        positions[i3] += (Math.random() - 0.5) * 0.1;
+                        positions[i3+1] += (Math.random() - 0.5) * 0.1;
+                        positions[i3+2] += (Math.random() - 0.5) * 0.1;
+                    }
+                    needsUpdate = true;
+                }
+                colors[i3] += (targetCol[i3] - colors[i3]) * (speed * 0.6);
+                colors[i3+1] += (targetCol[i3+1] - colors[i3+1]) * (speed * 0.6);
+                colors[i3+2] += (targetCol[i3+2] - colors[i3+2]) * (speed * 0.6);
+            }
+            if (needsUpdate || appState === 0) { 
+                geometry.attributes.position.needsUpdate = true;
+                geometry.attributes.color.needsUpdate = true;
+            }
+            renderer.render(scene, camera);
+        }
+        init();
+    </script>
+</body>
+</html>

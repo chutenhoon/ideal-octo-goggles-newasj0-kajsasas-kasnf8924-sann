@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dành Cho Anh 💕</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+            background: linear-gradient(135deg, #ffc3e1 0%, #ffb3d9 50%, #ff9ecf 100%);
+            min-height: 100vh;
+        }
+
+        /* Login Screen */
+        #loginScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #ffc3e1 0%, #ffb3d9 50%, #ff9ecf 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.8s, transform 0.8s;
+        }
+
+        #loginScreen.hidden {
+            opacity: 0;
+            transform: scale(1.1);
+            pointer-events: none;
+        }
+
+        .login-box {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px 30px;
+            border-radius: 30px;
+            box-shadow: 0 20px 60px rgba(255, 105, 180, 0.4);
+            text-align: center;
+            max-width: 90%;
+            width: 400px;
+            animation: floatIn 1s ease-out;
+        }
+
+        @keyframes floatIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-box h2 {
+            color: #ff69b4;
+            margin-bottom: 20px;
+            font-size: 28px;
+            text-shadow: 2px 2px 4px rgba(255, 105, 180, 0.3);
+        }
+
+        .login-box input {
+            width: 100%;
+            padding: 15px;
+            border: 3px solid #ffb3d9;
+            border-radius: 15px;
+            font-size: 16px;
+            margin: 20px 0;
+            outline: none;
+            transition: all 0.3s;
+            background: #fff;
+        }
+
+        .login-box input:focus {
+            border-color: #ff69b4;
+            box-shadow: 0 0 20px rgba(255, 105, 180, 0.3);
+            transform: scale(1.02);
+        }
+
+        .login-box button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #ff69b4, #ff1493);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(255, 105, 180, 0.4);
+        }
+
+        .login-box button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 105, 180, 0.6);
+        }
+
+        .error {
+            color: #ff1493;
+            margin-top: 10px;
+            font-size: 14px;
+            display: none;
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        /* Content Screen */
+        #contentScreen {
+            display: none;
+            padding: 20px;
+            animation: fadeIn 1.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px 30px;
+            border-radius: 30px;
+            box-shadow: 0 20px 60px rgba(255, 105, 180, 0.3);
+            position: relative;
+            z-index: 1;
+        }
+
+        h1 {
+            text-align: center;
+            color: #ff1493;
+            margin-bottom: 30px;
+            font-size: 32px;
+            text-shadow: 2px 2px 4px rgba(255, 105, 180, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .letter-content {
+            color: #333;
+            line-height: 2;
+            font-size: 16px;
+            text-align: justify;
+            padding: 20px;
+            background: rgba(255, 240, 245, 0.5);
+            border-radius: 20px;
+            border: 2px solid #ffb3d9;
+        }
+
+        /* 3D Hearts Animation */
+        .heart {
+            position: fixed;
+            font-size: 30px;
+            animation: float 6s infinite ease-in-out;
+            z-index: 0;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg) scale(1);
+            }
+            25% {
+                transform: translateY(-30px) rotate(5deg) scale(1.1);
+            }
+            50% {
+                transform: translateY(-50px) rotate(-5deg) scale(1.2);
+            }
+            75% {
+                transform: translateY(-30px) rotate(5deg) scale(1.1);
+            }
+        }
+
+        /* Floating particles */
+        .particle {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: #ff69b4;
+            border-radius: 50%;
+            animation: particleFloat 8s infinite;
+            z-index: 0;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        @keyframes particleFloat {
+            0% {
+                transform: translateY(100vh) translateX(0) scale(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.6;
+            }
+            90% {
+                opacity: 0.6;
+            }
+            100% {
+                transform: translateY(-100px) translateX(100px) scale(1);
+                opacity: 0;
+            }
+        }
+
+        /* Sparkle effect */
+        .sparkle {
+            position: fixed;
+            width: 4px;
+            height: 4px;
+            background: white;
+            border-radius: 50%;
+            animation: sparkleAnim 3s infinite;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        @keyframes sparkleAnim {
+            0%, 100% {
+                opacity: 0;
+                transform: scale(0);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Mobile optimization */
+        @media (max-width: 768px) {
+            .container {
+                padding: 25px 20px;
+                border-radius: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .letter-content {
+                font-size: 15px;
+                line-height: 1.8;
+                padding: 15px;
+            }
+
+            .login-box {
+                padding: 30px 20px;
+            }
+
+            .login-box h2 {
+                font-size: 24px;
+            }
+
+            .heart {
+                font-size: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px 15px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+
+            .letter-content {
+                font-size: 14px;
+                line-height: 1.7;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen">
+        <div class="login-box">
+            <h2>💕 Nhập Mật Khẩu 💕</h2>
+            <p style="color: #ff69b4; margin-bottom: 20px;">Để mở lời nhắn dành riêng cho anh...</p>
+            <input type="password" id="passwordInput" placeholder="Nhập mật khẩu">
+            <button onclick="checkPassword()">Mở Ra ❤️</button>
+            <div class="error" id="errorMsg">❌ Mật khẩu không đúng!</div>
+        </div>
+    </div>
+
+    <!-- Content Screen -->
+    <div id="contentScreen">
+        <div class="container">
+            <h1>💌 Lời Muốn Nói Với Anh 💌</h1>
+            <div class="letter-content">
+                <p>Viết gấp trước 5h nên tui vẫn chưa nói hết được những gì mình muốn nói đâu, hôm qua tui đã muốn nói bằng lời vào lúc đó rồi nhưng mà nước mắt nó chặn cái họng tui lại và tui cũng không có nói được thành tiếng nên không nói bằng lời trược tiếp được.</p>
+                
+                <p>Thật ra thì tui đã để ý Anh từ khoảng năm 11 rồi, nhưng mà tui có dám nói ra hay không, đương nhiên là không, tình cờ vào 1 cái ngày hè năm 11 tui thấy Anh đăng 1 cái story chơi minecraft, đúng cái game tủ của tui rồi, hôm đó ăn cái gì không biết mà lại dám nhắn cho Anh luôn, rồi từ đó mới bắt đầu nhắn tin 1 tí, về sau thì ngày càng thân, tui biết là sẽ có ngày tui sẽ thích ngta mất, nhưng mà hôm đó Anh nói rằng Anh đã có người mình thích, và người đó rất giỏi, nên tui liền nghĩ bản thân mình chả là cái gì hết, cái gì cũng không có, từ học tập, sự nghiệp, khả năng giao tiếp, vẻ bề ngoài đều là con số không, cho nên tui đã bỏ cái suy nghĩ thích Anh ra khỏi đầu ngay từ lúc đó, tui nghĩ nếu không được thì mình có thể giúp Anh quen cái người đó mà, Anh vui là được, nhiều lúc Anh nói với tui, than với tui, tui muốn khuyên rằng bỏ luôn cái thằng quỷ đó đi, làm Anh khổ như vậy thì mắc gì mà phải theo hoài, nhưng mà làm sao tui dám nói ra (và giờ mới biết tui là cái thằng quỷ đó nè trời ơi) vì đó là người Anh thích mà.</p>
+                
+                <p>Gần đây thì mấy đứa bạn tui có nói là có người đang thích ông đó, tui hỏi 1 hồi thì nó nói là Anh, tất nhiên là tui không tin vì tui biết rõ Anh có người thích rồi mà, mấy cái câu Anh hỏi ẩn ý tui này nọ tui hiểu chứ, nhưng mà tui chỉ nghĩ đơn giản là nó không phải dành cho mình thôi, tui đã không biết nó là đang ám chỉ vào tui, thiệt sự luôn á.</p>
+                
+                <p>Hôm qua là cái lần từ lâu lắm rồi tui mới khóc như vậy, khóc cũng lâu lắm, khóc không phải vì thất bại 1 việc nào đó như mọi khi mà khóc vì có 1 người luôn để ý, quan tâm tới bản thân mà chính mình không hề hay biết, mình đã làm cho người ta buồn, người ta khóc biết bao nhiêu lần rồi?</p>
+                
+                <p>Hơi ngại nhưng mà tui phải nói là gu của tui là Anh đó, tui sẽ ngầm theo đuổi bằng 1 cách khác, ở ngoài tui sẽ không thể hiện ra đâu, tất nhiên là sau khi thi đại học, cách tui để ý ngta nó khác lắm, còn được đồng ý hay không thì tùy duyên thui, bây h tui nói ra cũng được nhưng sẽ có rất nhiều rắc rối đi theo, Anh sẽ rất phiền cho nên hãy quên đi cũng được, bỗng 1 ngày sẽ có 1 đứa nhảy ra làm cho Anh sốc bật ngữa cho xem.</p>
+                
+                <p>Hiện tại thì không biết có thể tiếp tục được như hỗm giờ hay không, tui nhận ra mỗi ngày không nhắn tin với Anh thì tui thấy buồn với thiếu lắm, nếu được thì call với tui nhiều vô, tui không bao giờ thấy phiền đâu, rất thích nữa..., nhưng chắc là không được.</p>
+                
+                <p>Tạm thời thì tui nhớ được bao nhiêu đó, viết cũng vội nên có sai cái gì thì bỏ qua nghen, quên luôn cái này cũng được, vì nếu sau khi thi đại học xong mà tui vẫn dậm chân tại chỗ như hiện tại và không có thành tựu gì mới, thì có thể tui sẽ không nói ra được rồi.</p>
+                
+                <p style="text-align: center; margin-top: 30px; font-size: 20px; color: #ff1493;"><strong>Vậy nhen, iu! 💕</strong></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Password check
+        function checkPassword() {
+            const input = document.getElementById('passwordInput');
+            const error = document.getElementById('errorMsg');
+            
+            if (input.value === 'LANANH') {
+                document.getElementById('loginScreen').classList.add('hidden');
+                setTimeout(() => {
+                    document.getElementById('contentScreen').style.display = 'block';
+                    createHearts();
+                    createParticles();
+                    createSparkles();
+                }, 800);
+            } else {
+                error.style.display = 'block';
+                input.value = '';
+                input.style.borderColor = '#ff1493';
+                setTimeout(() => {
+                    error.style.display = 'none';
+                    input.style.borderColor = '#ffb3d9';
+                }, 2000);
+            }
+        }
+
+        // Enter key support
+        document.getElementById('passwordInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkPassword();
+            }
+        });
+
+        // Create floating hearts
+        function createHearts() {
+            const hearts = ['💕', '💖', '💗', '💓', '💝', '❤️', '🩷'];
+            for (let i = 0; i < 15; i++) {
+                const heart = document.createElement('div');
+                heart.className = 'heart';
+                heart.innerHTML = hearts[Math.floor(Math.random() * hearts.length)];
+                heart.style.left = Math.random() * 100 + '%';
+                heart.style.top = Math.random() * 100 + '%';
+                heart.style.animationDelay = Math.random() * 3 + 's';
+                heart.style.animationDuration = (Math.random() * 3 + 4) + 's';
+                document.body.appendChild(heart);
+            }
+        }
+
+        // Create floating particles
+        function createParticles() {
+            for (let i = 0; i < 30; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 5 + 's';
+                particle.style.animationDuration = (Math.random() * 5 + 5) + 's';
+                document.body.appendChild(particle);
+            }
+        }
+
+        // Create sparkles
+        function createSparkles() {
+            for (let i = 0; i < 50; i++) {
+                const sparkle = document.createElement('div');
+                sparkle.className = 'sparkle';
+                sparkle.style.left = Math.random() * 100 + '%';
+                sparkle.style.top = Math.random() * 100 + '%';
+                sparkle.style.animationDelay = Math.random() * 3 + 's';
+                document.body.appendChild(sparkle);
+            }
+        }
+    </script>
+</body>
+</html>

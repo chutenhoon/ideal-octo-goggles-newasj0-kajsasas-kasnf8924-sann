@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lá thư gửi em</title>
+
+<style>
+  :root {
+    --bg1: #8ec5ff;
+    --bg2: #d0e9ff;
+    --bg3: #eaf6ff;
+    --letter-bg: rgba(255, 255, 255, 0.96);
+    --letter-border: rgba(0, 110, 255, 0.8);
+    --accent: #0045af;
+    --accent-soft: rgba(0, 102, 255, 0.3);
+    --text-main: #003164;
+    --text-sub: #50657a;
+    --blur: 22px;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body {
+    width: 100%;
+  }
+
+  body {
+    min-height: 100vh;
+    font-family: "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, var(--bg1), var(--bg2), var(--bg3));
+    background-size: 200% 200%;
+    animation: bgMove 16s ease-in-out infinite alternate;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px 16px;
+    overflow-x: hidden;
+  }
+
+  @keyframes bgMove {
+    0% { background-position: 0% 0%; }
+    100% { background-position: 100% 100%; }
+  }
+
+  .orb {
+    position: fixed;
+    border-radius: 999px;
+    filter: blur(60px);
+    opacity: 0.55;
+    mix-blend-mode: screen;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .orb1 {
+    width: 360px;
+    height: 360px;
+    top: -80px;
+    left: -60px;
+    background: rgba(0,140,255,0.75);
+    animation: orbFloat1 18s ease-in-out infinite alternate;
+  }
+
+  .orb2 {
+    width: 360px;
+    height: 360px;
+    bottom: -80px;
+    right: -60px;
+    background: rgba(120,190,255,0.75);
+    animation: orbFloat2 18s ease-in-out infinite alternate;
+  }
+
+  @keyframes orbFloat1 {
+    0% { transform: translate(0,0); }
+    100% { transform: translate(40px, 30px); }
+  }
+
+  @keyframes orbFloat2 {
+    0% { transform: translate(0,0); }
+    100% { transform: translate(-30px, -30px); }
+  }
+
+  .wrapper {
+    width: 100%;
+    max-width: 720px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .letter-shell {
+    width: 100%;
+    padding: 6px;
+    border-radius: 24px;
+    background: rgba(255,255,255,0.5);
+    backdrop-filter: blur(var(--blur));
+    border: 1px solid rgba(255,255,255,0.8);
+    box-shadow:
+      0 22px 70px rgba(0, 88, 255, 0.35),
+      0 0 0 1px rgba(255,255,255,0.7);
+    animation: appear 0.9s ease forwards; /* bỏ floatShell để không bị dịch dịch */
+    opacity: 0;
+    transform: translateY(26px) scale(0.96);
+    position: relative;
+    overflow: hidden;
+  }
+
+  @keyframes appear {
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  /* floatShell vẫn để đây nhưng không dùng nữa
+  @keyframes floatShell {
+    0% { transform: translateY(0) scale(1); }
+    100% { transform: translateY(-4px) scale(1.01); }
+  }
+  */
+
+  .letter {
+    position: relative;
+    background: var(--letter-bg);
+    border-radius: 18px;
+    border: 1px solid var(--letter-border);
+    padding: 22px 26px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.6s ease;
+    box-shadow: 0 18px 48px rgba(0, 110, 255, 0.25);
+  }
+
+  .letter::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.92);
+    border-radius: 16px;
+    transform-origin: top;
+    transform: rotateX(0deg);
+    transition: transform 0.75s cubic-bezier(0.22, 0.61, 0.36, 1);
+    z-index: 0;
+  }
+
+  .letter.open::before {
+    transform: rotateX(-110deg);
+  }
+
+  .letter-inner {
+    position: relative;
+    z-index: 2;
+  }
+
+  /* HINT NHẤN ĐỂ MỞ */
+  .hint {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #00225b;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    text-align: center;
+    margin-top: 6px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+
+    opacity: 1 !important;
+    filter: none !important;
+    text-shadow:
+      0 0 6px rgba(255,255,255,0.95),
+      0 0 14px rgba(0,60,180,0.35);
+    transform: none !important;
+  }
+
+  .hint-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: #00225b;
+    box-shadow: 0 0 10px rgba(0,60,180,0.7);
+  }
+
+  .hint-line {
+    margin-top: 6px;
+    height: 2px;
+    width: 100%;
+    border-radius: 999px;
+    background: linear-gradient(
+      90deg,
+      rgba(0,60,180,0),
+      rgba(0,60,180,1),
+      rgba(0,60,180,0)
+    );
+    opacity: 0.95;
+  }
+
+  .letter-body {
+    margin-top: 14px;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--text-main);
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(14px);
+    transition: opacity 0.8s ease, max-height 0.9s ease, transform 0.9s ease;
+    overflow: hidden;
+  }
+
+  .letter.open .letter-body {
+    opacity: 1;
+    max-height: 2000px;
+    transform: translateY(0);
+  }
+
+  .letter-body p {
+    white-space: pre-line;
+  }
+
+  @media (max-width: 600px) {
+    .letter {
+      padding: 18px 18px;
+    }
+    .hint {
+      font-size: 0.95rem;
+      letter-spacing: 0.18em;
+    }
+  }
+</style>
+</head>
+
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<div class="wrapper">
+  <div class="letter-shell">
+    <div class="letter" id="letter">
+      <div class="letter-inner">
+        <div class="hint">
+          <span class="hint-dot"></span>
+          <span>NHẤN ĐỂ MỞ</span>
+        </div>
+        <div class="hint-line"></div>
+
+        <div class="letter-body">
+          <p>
+Anh buồn lắm, anh mong chờ cái ngày 20/11 này từ 1 tuần trước rồi, anh cứ nghĩ lần này mình sẽ có cơ hội được chụp chung với em 1 tấm ảnh, anh đã chuẩn bị cách chụp, chỉnh sửa màu của điện thoại sao cho hợp nhất có thể, nếu không chụp được với em 1 tấm ảnh thì ít nhất anh cũng muốn đưa điện thoại cho em tự chụp bằng chính cái điện thoại của anh, thật tuyệt khi hôm nay anh không chụp chung với em được tấm nào, ngay cả 1 tấm em tự chụp bằng điện thoại anh cũng không có, lúc ngồi ở đó anh cảm thấy rất không thoải mái, người yêu của mình nhưng không được bắt chuyện, không được ngồi gần, thậm chí là không được nhìn lâu, tại sao vậy, lúc đó anh thực sự muốn bỏ đi ra ngoài vì anh cảm thấy anh không thuộc về nơi này nhưng anh không thể bỏ em ở đó 1 mình được, tuyệt vời hơn lúc ra về vẫn còn 1 chút hy vọng nhưng cuối cùng cũng bị dập tắt, anh đi ra nhà xe, anh cố gắng đứng đợi 5 10 phút xem có 1 phép màu nào sẽ xãy ra hay không, nhưng đó chỉ là sự ảo tưởng của anh mà thôi, không có 1 phép màu nào cả. Khi về nhà anh muốn tỏ thái độ 1 chút để em quan tâm anh hơn, bất ngờ khi em nhắn vài câu rồi đi đâu mất, giờ anh mới nhận ra anh không quan trọng như anh tưởng, mọi thứ tất cả chỉ là sự tưởng tượng của anh. anh xin lỗi nếu như cái này gây áp lực cho em, em có thể quên nó đi cũng được, anh hiểu bạn bè đối với em quan trọng lắm như em từng nói với anh tháng thì làm sao mà so được với năm, hôm nay là 1 ngày lễ nên việc này không đáng xãy ra, anh không trách gì em hết em đừng suy nghĩ nhiều.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const letter = document.getElementById("letter");
+  letter.addEventListener("click", () => {
+    letter.classList.toggle("open");
+  });
+</script>
+
+</body>
+</html>

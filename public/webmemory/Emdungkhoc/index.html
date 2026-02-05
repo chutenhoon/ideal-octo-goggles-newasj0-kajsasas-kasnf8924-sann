@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gửi Em</title>
+  <!-- Dùng font Google Noto Sans Italic (nghiêng), hỗ trợ tiếng Việt -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@1,700&display=swap&subset=vietnamese" rel="stylesheet">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      background: #fff;
+      color: #222;
+      font-family: 'Noto Sans', Arial, Tahoma, sans-serif;
+      font-style: italic;
+      font-weight: 700;
+      width: 100%;
+    }
+    body {
+      min-height: 100vh;
+      min-width: 100vw;
+      width: 100vw;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow-x: hidden;
+      user-select: none;
+    }
+    .vcenter-wrap {
+      width: 100vw;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .container {
+      max-width: 540px;
+      width: 100vw;
+      background: #fff;
+      min-height: 70vh;
+      margin: 0 auto;
+      padding: 38px 15px 38px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      box-sizing: border-box;
+      justify-content: center;
+    }
+    .text-block {
+      font-family: 'Noto Sans', Arial, Tahoma, sans-serif;
+      font-size: 1.42rem;
+      font-weight: 700;
+      line-height: 1.6;
+      letter-spacing: 0.01em;
+      width: 100%;
+      text-align: left;
+      margin-bottom: 16px;
+      user-select: none;
+      word-break: break-word;
+      font-style: italic;
+    }
+    .scene {
+      min-height: 1.13em;
+      display: block;
+      margin-bottom: 0.07em;
+      text-align: left;
+      width: 100%;
+      white-space: pre-line;
+      pointer-events: none;
+    }
+    .char {
+      display: inline-block;
+      opacity: 0;
+      filter: blur(12px);
+      transform: translateY(10px) scale(1.1);
+      transition:
+        opacity 0.8s cubic-bezier(.27,1.33,.37,.97),
+        filter 0.83s cubic-bezier(.27,1.33,.37,.97),
+        transform 0.92s cubic-bezier(.27,1.33,.37,.97);
+      white-space: pre;
+      font-style: italic;
+    }
+    .char.visible {
+      opacity: 1;
+      filter: blur(0);
+      transform: translateY(0) scale(1);
+    }
+    .char.slow {
+      transition-duration: 1.05s, 1.09s, 1.15s;
+    }
+    .mail-row {
+      font-family: 'Noto Sans', Arial, Tahoma, sans-serif;
+      font-size: 1.08rem;
+      font-weight: 700;
+      margin: 32px 0 8px 0;
+      text-align: left;
+      letter-spacing: 0.01em;
+      word-break: break-all;
+      opacity: 0;
+      transition: opacity 1.15s cubic-bezier(.19,.79,.45,1.20);
+      will-change: opacity;
+      width: 100%;
+      font-style: italic;
+    }
+    .mail-row.visible {
+      opacity: 1;
+    }
+    .copyright-handwrite {
+      display: none;
+    }
+    @media (max-width: 600px) {
+      .container {
+        max-width: 99vw;
+        padding: 35px 2vw 32px 4vw;
+      }
+      .text-block{
+        font-size: 1.01rem;
+      }
+      .mail-row{
+        font-size: 0.95rem;
+      }
+    }
+    @media (max-width: 360px) {
+      .text-block { font-size: .87rem;}
+      .mail-row { font-size: .76rem;}
+      .container { padding: 14px 0 14px 6vw;}
+    }
+  </style>
+</head>
+<body>
+  <div class="vcenter-wrap">
+    <div class="container">
+      <div id="main-content" class="text-block"></div>
+      <div id="mail" class="mail-row"></div>
+    </div>
+  </div>
+  <script>
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('copy', e => e.preventDefault());
+    document.addEventListener('selectstart', e => e.preventDefault());
+    document.addEventListener('keydown', function(e) {
+      if (
+        e.keyCode === 123 ||
+        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'u') ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey &&
+          ['i','j','c','k'].includes(e.key.toLowerCase())) ||
+        ((e.metaKey && e.altKey) && ['i','j','c','k'].includes(e.key.toLowerCase())) ||
+        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's')
+      ) { e.preventDefault(); }
+    });
+
+    const lines = [
+      "Đừng khóc mà,",
+      "",
+      "Anh không muốn nhìn thấy",
+      "Em khóc một chút nào",
+      "Anh rất rất rất thương em",
+      "Bỗng nhiên em biến mất",
+      "Làm anh thực sự rất buồn",
+      "Đêm qua anh không ngủ được",
+      "Anh không giỏi bài tỏ",
+      "Anh cũng không dám nhắn cho em",
+      "Em xem bằng cái này nhé",
+      "Anh bị làm sao rồi",
+      "Anh không muốn mất em đâu",
+      "Nghĩ tới lại càng không muốn",
+      "Không muốn",
+      "Không muốn",
+      "Không muốn"
+    ];
+
+    const charDelay = 38;
+    const sceneDelay = 300;
+    const pauseDelay = 420;
+    const firstCharExtraDelay = 80;
+
+    async function animateBlock(linesArr, container){
+      for(let line of linesArr){
+        await animateLine(line, container);
+      }
+    }
+
+    function animateLine(line, container){
+      return new Promise((resolve)=>{
+        const span = document.createElement('span');
+        span.className = "scene";
+        container.appendChild(span);
+        if(line.trim() === "") {
+          setTimeout(resolve, 120);
+          return;
+        }
+        const chars = line.split('').map((c, idx) => {
+          const n = document.createElement('span');
+          n.className = "char";
+          if(idx === 0) n.classList.add('slow');
+          n.textContent = (c === " " ? "\u00A0" : c);
+          span.appendChild(n);
+          return n;
+        });
+        let i = 0;
+        function showChar(){
+          if(i < chars.length){
+            setTimeout(()=>{
+              chars[i].classList.add('visible');
+              i++;
+              showChar();
+            }, i === 0 ? firstCharExtraDelay : charDelay);
+          }else{
+            setTimeout(resolve, pauseDelay);
+          }
+        }
+        showChar();
+      });
+    }
+
+    (async function(){
+      const main = document.getElementById("main-content");
+      main.innerHTML = "";
+      await animateBlock(lines, main);
+
+      document.getElementById("mail").innerHTML = "";
+    })();
+  </script>
+</body>
+</html>
