@@ -382,6 +382,7 @@ async function uploadMultipartMp4(
     onProgress(0, total);
   }
 
+  const etagMap = new Map<number, string>();
   await runWithConcurrency(
     init.parts,
     MP4_CONCURRENCY,
@@ -396,6 +397,14 @@ async function uploadMultipartMp4(
       if (!response.ok) {
         throw new Error(`Upload failed for MP4 part ${part.partNumber}.`);
       }
+      const etagHeader =
+        response.headers.get("ETag") || response.headers.get("etag");
+      if (etagHeader) {
+        const cleaned = etagHeader.replace(/"/g, "");
+        if (cleaned) {
+          etagMap.set(part.partNumber, cleaned);
+        }
+      }
     },
     (done, totalParts) => {
       if (onProgress) {
@@ -404,7 +413,10 @@ async function uploadMultipartMp4(
     }
   );
 
-  const parts = init.parts.map((part) => ({ partNumber: part.partNumber }));
+  const parts = init.parts.map((part) => {
+    const etag = etagMap.get(part.partNumber);
+    return etag ? { partNumber: part.partNumber, etag } : { partNumber: part.partNumber };
+  });
   await apiFetchVoid("/api/admin/uploads/multipart/complete", {
     method: "POST",
     body: JSON.stringify({
