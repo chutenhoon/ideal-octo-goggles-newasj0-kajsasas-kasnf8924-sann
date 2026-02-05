@@ -114,6 +114,7 @@ type MultipartInit = {
 
 const HLS_CONCURRENCY = 3;
 const MP4_CONCURRENCY = 4;
+const AUDIO_CONCURRENCY = 3;
 const HLS_MASTER_NAME = "index.m3u8";
 const EXT_CONTENT_TYPES: Record<string, string> = {
   m3u8: "application/vnd.apple.mpegurl",
@@ -361,31 +362,37 @@ async function uploadToR2(
   return objectKey;
 }
 
-async function uploadMultipartMp4(
-  target: { videoId?: string; shortId?: string },
+type MultipartTarget = { videoId?: string; shortId?: string; audioId?: string };
+
+async function uploadMultipartFile(
+  target: MultipartTarget,
   file: File,
-  onProgress?: (done: number, total: number) => void
+  options: {
+    contentType: string;
+    path?: string;
+    concurrency?: number;
+    onProgress?: (done: number, total: number) => void;
+  }
 ) {
-  const contentType =
-    file.type && file.type.startsWith("video/") ? file.type : "video/mp4";
   const init = await apiFetch<MultipartInit>("/api/admin/uploads/multipart/create", {
     method: "POST",
     body: JSON.stringify({
       ...target,
       sizeBytes: file.size,
-      contentType
+      contentType: options.contentType,
+      path: options.path
     })
   });
 
   const total = init.totalParts || init.parts.length;
-  if (onProgress) {
-    onProgress(0, total);
+  if (options.onProgress) {
+    options.onProgress(0, total);
   }
 
   const etagMap = new Map<number, string>();
   await runWithConcurrency(
     init.parts,
-    MP4_CONCURRENCY,
+    options.concurrency ?? MP4_CONCURRENCY,
     async (part) => {
       const start = (part.partNumber - 1) * init.partSize;
       const end = Math.min(start + init.partSize, file.size);
@@ -395,7 +402,7 @@ async function uploadMultipartMp4(
         body: chunk
       });
       if (!response.ok) {
-        throw new Error(`Upload failed for MP4 part ${part.partNumber}.`);
+        throw new Error(`Upload failed for part ${part.partNumber}.`);
       }
       const etagHeader =
         response.headers.get("ETag") || response.headers.get("etag");
@@ -407,8 +414,8 @@ async function uploadMultipartMp4(
       }
     },
     (done, totalParts) => {
-      if (onProgress) {
-        onProgress(done, totalParts);
+      if (options.onProgress) {
+        options.onProgress(done, totalParts);
       }
     }
   );
@@ -417,6 +424,7 @@ async function uploadMultipartMp4(
     const etag = etagMap.get(part.partNumber);
     return etag ? { partNumber: part.partNumber, etag } : { partNumber: part.partNumber };
   });
+
   await apiFetchVoid("/api/admin/uploads/multipart/complete", {
     method: "POST",
     body: JSON.stringify({
@@ -428,6 +436,36 @@ async function uploadMultipartMp4(
   });
 
   return init.r2Key;
+}
+
+async function uploadMultipartMp4(
+  target: { videoId?: string; shortId?: string },
+  file: File,
+  onProgress?: (done: number, total: number) => void
+) {
+  const contentType =
+    file.type && file.type.startsWith("video/") ? file.type : "video/mp4";
+  return uploadMultipartFile(target, file, {
+    contentType,
+    path: "pc.mp4",
+    concurrency: MP4_CONCURRENCY,
+    onProgress
+  });
+}
+
+async function uploadMultipartAudio(
+  target: { audioId: string },
+  file: File,
+  ext: string,
+  contentType: string,
+  onProgress?: (done: number, total: number) => void
+) {
+  return uploadMultipartFile(target, file, {
+    contentType,
+    path: `audio.${ext}`,
+    concurrency: AUDIO_CONCURRENCY,
+    onProgress
+  });
 }
 
 async function runWithConcurrency<T>(
@@ -478,7 +516,7 @@ export default function Admin() {
   const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [hlsFile, setHlsFile] = useState<File | null>(null);
   const [creating, setCreating] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [videoUploadStatus, setVideoUploadStatus] = useState<string | null>(null);
   const [videoSuccess, setVideoSuccess] = useState<string | null>(null);
 
   const [shortTitle, setShortTitle] = useState("");
@@ -487,6 +525,7 @@ export default function Admin() {
   const [shortThumbFile, setShortThumbFile] = useState<File | null>(null);
   const [shortHlsFile, setShortHlsFile] = useState<File | null>(null);
   const [creatingShort, setCreatingShort] = useState(false);
+  const [shortUploadStatus, setShortUploadStatus] = useState<string | null>(null);
   const [shortSuccess, setShortSuccess] = useState<string | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -514,17 +553,20 @@ export default function Admin() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioThumb, setAudioThumb] = useState<File | null>(null);
   const [creatingAudio, setCreatingAudio] = useState(false);
+  const [audioUploadStatus, setAudioUploadStatus] = useState<string | null>(null);
 
   const [imageTitle, setImageTitle] = useState("");
   const [imageDescription, setImageDescription] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageThumb, setImageThumb] = useState<File | null>(null);
   const [creatingImage, setCreatingImage] = useState(false);
+  const [imageUploadStatus, setImageUploadStatus] = useState<string | null>(null);
 
   const [albumTitle, setAlbumTitle] = useState("");
   const [albumDescription, setAlbumDescription] = useState("");
   const [albumFiles, setAlbumFiles] = useState<File[]>([]);
   const [creatingAlbum, setCreatingAlbum] = useState(false);
+  const [albumUploadStatus, setAlbumUploadStatus] = useState<string | null>(null);
   const [editingAlbumId, setEditingAlbumId] = useState<string | null>(null);
   const [editAlbumTitle, setEditAlbumTitle] = useState("");
   const [editAlbumDescription, setEditAlbumDescription] = useState("");
@@ -696,18 +738,18 @@ export default function Admin() {
 
     setCreating(true);
     setError(null);
-    setUploadStatus(null);
+    setVideoUploadStatus(null);
     setVideoSuccess(null);
 
     try {
       const videoId = crypto.randomUUID();
 
-      setUploadStatus("Preparing MP4 upload...");
+      setVideoUploadStatus("Preparing MP4 upload...");
       const pcKey = await uploadMultipartMp4(
           { videoId },
           mp4File,
           (done, total) => {
-            setUploadStatus(`Uploading MP4 parts ${done}/${total}...`);
+            setVideoUploadStatus(`Uploading MP4 parts ${done}/${total}...`);
           }
         );
 
@@ -715,7 +757,7 @@ export default function Admin() {
       if (thumbFile) {
         const ext = thumbExtension(thumbFile);
         const thumbType = thumbContentType(thumbFile, ext);
-        setUploadStatus("Uploading thumbnail...");
+        setVideoUploadStatus("Uploading thumbnail...");
         thumbKey = await uploadToR2(
           { videoId },
           `thumb.${ext}`,
@@ -724,9 +766,9 @@ export default function Admin() {
         );
       } else {
         try {
-          setUploadStatus("Generating thumbnail...");
+          setVideoUploadStatus("Generating thumbnail...");
           const autoThumb = await generateThumbnailFromVideo(mp4File);
-          setUploadStatus("Uploading thumbnail...");
+          setVideoUploadStatus("Uploading thumbnail...");
           thumbKey = await uploadToR2(
             { videoId },
             "thumb.jpg",
@@ -734,14 +776,14 @@ export default function Admin() {
             "image/jpeg"
           );
         } catch {
-          setUploadStatus("Skipping thumbnail...");
+          setVideoUploadStatus("Skipping thumbnail...");
           thumbKey = null;
         }
       }
 
-      setUploadStatus("Extracting HLS ZIP...");
+      setVideoUploadStatus("Extracting HLS ZIP...");
       const extracted = extractHlsEntries(await unzipFile(hlsFile));
-      setUploadStatus(`Uploading HLS 0/${extracted.length} files`);
+      setVideoUploadStatus(`Uploading HLS 0/${extracted.length} files`);
       await runWithConcurrency(
         extracted,
         HLS_CONCURRENCY,
@@ -755,7 +797,7 @@ export default function Admin() {
           );
         },
         (done, total) => {
-          setUploadStatus(`Uploading HLS ${done}/${total} files`);
+          setVideoUploadStatus(`Uploading HLS ${done}/${total} files`);
         }
       );
 
@@ -769,7 +811,7 @@ export default function Admin() {
         size_bytes: mp4File.size
       };
 
-      setUploadStatus("Saving metadata...");
+      setVideoUploadStatus("Saving metadata...");
       await apiFetchVoid("/api/admin/videos", {
         method: "POST",
         body: JSON.stringify(payload)
@@ -786,7 +828,7 @@ export default function Admin() {
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setCreating(false);
-      setUploadStatus(null);
+      setVideoUploadStatus(null);
     }
   };
 
@@ -800,18 +842,18 @@ export default function Admin() {
 
     setCreatingShort(true);
     setError(null);
-    setUploadStatus(null);
+    setShortUploadStatus(null);
     setShortSuccess(null);
 
     try {
       const shortId = crypto.randomUUID();
 
-      setUploadStatus("Preparing MP4 upload...");
+      setShortUploadStatus("Preparing MP4 upload...");
       const pcKey = await uploadMultipartMp4(
           { shortId },
           shortMp4File,
           (done, total) => {
-            setUploadStatus(`Uploading MP4 parts ${done}/${total}...`);
+            setShortUploadStatus(`Uploading MP4 parts ${done}/${total}...`);
           }
         );
 
@@ -819,7 +861,7 @@ export default function Admin() {
       if (shortThumbFile) {
         const ext = thumbExtension(shortThumbFile);
         const thumbType = thumbContentType(shortThumbFile, ext);
-        setUploadStatus("Uploading thumbnail...");
+        setShortUploadStatus("Uploading thumbnail...");
         thumbKey = await uploadToR2(
           { shortId },
           `thumb.${ext}`,
@@ -828,9 +870,9 @@ export default function Admin() {
         );
       } else {
         try {
-          setUploadStatus("Generating thumbnail...");
+          setShortUploadStatus("Generating thumbnail...");
           const autoThumb = await generateThumbnailFromVideo(shortMp4File);
-          setUploadStatus("Uploading thumbnail...");
+          setShortUploadStatus("Uploading thumbnail...");
           thumbKey = await uploadToR2(
             { shortId },
             "thumb.jpg",
@@ -838,14 +880,14 @@ export default function Admin() {
             "image/jpeg"
           );
         } catch {
-          setUploadStatus("Skipping thumbnail...");
+          setShortUploadStatus("Skipping thumbnail...");
           thumbKey = null;
         }
       }
 
-      setUploadStatus("Extracting HLS ZIP...");
+      setShortUploadStatus("Extracting HLS ZIP...");
       const extracted = extractHlsEntries(await unzipFile(shortHlsFile));
-      setUploadStatus(`Uploading HLS 0/${extracted.length} files`);
+      setShortUploadStatus(`Uploading HLS 0/${extracted.length} files`);
       await runWithConcurrency(
         extracted,
         HLS_CONCURRENCY,
@@ -859,7 +901,7 @@ export default function Admin() {
           );
         },
         (done, total) => {
-          setUploadStatus(`Uploading HLS ${done}/${total} files`);
+          setShortUploadStatus(`Uploading HLS ${done}/${total} files`);
         }
       );
 
@@ -873,7 +915,7 @@ export default function Admin() {
         size_bytes: shortMp4File.size
       };
 
-      setUploadStatus("Saving metadata...");
+      setShortUploadStatus("Saving metadata...");
       await apiFetchVoid("/api/admin/shorts", {
         method: "POST",
         body: JSON.stringify(payload)
@@ -890,7 +932,7 @@ export default function Admin() {
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setCreatingShort(false);
-      setUploadStatus(null);
+      setShortUploadStatus(null);
     }
   };
 
@@ -923,7 +965,7 @@ export default function Admin() {
 
     setSavingShort(true);
     setError(null);
-    setUploadStatus(null);
+    setShortUploadStatus(null);
     try {
       const payload: Record<string, unknown> = {
         title: editShortTitle.trim(),
@@ -931,12 +973,12 @@ export default function Admin() {
       };
 
       if (editShortMp4) {
-        setUploadStatus("Preparing MP4 upload...");
+        setShortUploadStatus("Preparing MP4 upload...");
         const pcKey = await uploadMultipartMp4(
             { shortId: editingShortId },
             editShortMp4,
             (done, total) => {
-              setUploadStatus(`Uploading MP4 parts ${done}/${total}...`);
+              setShortUploadStatus(`Uploading MP4 parts ${done}/${total}...`);
             }
           );
         payload.pc_key = pcKey;
@@ -946,7 +988,7 @@ export default function Admin() {
       if (editShortThumb) {
         const ext = thumbExtension(editShortThumb);
         const thumbType = thumbContentType(editShortThumb, ext);
-        setUploadStatus("Uploading thumbnail...");
+        setShortUploadStatus("Uploading thumbnail...");
         const thumbKey = await uploadToR2(
           { shortId: editingShortId },
           `thumb.${ext}`,
@@ -957,9 +999,9 @@ export default function Admin() {
       }
 
       if (editShortHls) {
-        setUploadStatus("Extracting HLS ZIP...");
+        setShortUploadStatus("Extracting HLS ZIP...");
         const extracted = extractHlsEntries(await unzipFile(editShortHls));
-        setUploadStatus(`Uploading HLS 0/${extracted.length} files`);
+        setShortUploadStatus(`Uploading HLS 0/${extracted.length} files`);
         await runWithConcurrency(
           extracted,
           HLS_CONCURRENCY,
@@ -973,7 +1015,7 @@ export default function Admin() {
             );
           },
           (done, total) => {
-            setUploadStatus(`Uploading HLS ${done}/${total} files`);
+            setShortUploadStatus(`Uploading HLS ${done}/${total} files`);
           }
         );
         payload.hls_master_key = `shorts/${editingShortId}/hls/index.m3u8`;
@@ -992,7 +1034,7 @@ export default function Admin() {
       setError(err instanceof Error ? err.message : "Update failed.");
     } finally {
       setSavingShort(false);
-      setUploadStatus(null);
+      setShortUploadStatus(null);
     }
   };
 
@@ -1046,7 +1088,7 @@ export default function Admin() {
 
     setSaving(true);
     setError(null);
-    setUploadStatus(null);
+    setVideoUploadStatus(null);
     try {
       const payload: Record<string, unknown> = {
         title: editTitle.trim(),
@@ -1054,12 +1096,12 @@ export default function Admin() {
       };
 
       if (editMp4) {
-        setUploadStatus("Preparing MP4 upload...");
+        setVideoUploadStatus("Preparing MP4 upload...");
         const pcKey = await uploadMultipartMp4(
             { videoId: editingId },
             editMp4,
             (done, total) => {
-              setUploadStatus(`Uploading MP4 parts ${done}/${total}...`);
+              setVideoUploadStatus(`Uploading MP4 parts ${done}/${total}...`);
             }
           );
         payload.pc_key = pcKey;
@@ -1069,7 +1111,7 @@ export default function Admin() {
       if (editThumb) {
         const ext = thumbExtension(editThumb);
         const thumbType = thumbContentType(editThumb, ext);
-        setUploadStatus("Uploading thumbnail...");
+        setVideoUploadStatus("Uploading thumbnail...");
         const thumbKey = await uploadToR2(
           { videoId: editingId },
           `thumb.${ext}`,
@@ -1080,9 +1122,9 @@ export default function Admin() {
       }
 
       if (editHls) {
-        setUploadStatus("Extracting HLS ZIP...");
+        setVideoUploadStatus("Extracting HLS ZIP...");
         const extracted = extractHlsEntries(await unzipFile(editHls));
-        setUploadStatus(`Uploading HLS 0/${extracted.length} files`);
+        setVideoUploadStatus(`Uploading HLS 0/${extracted.length} files`);
         await runWithConcurrency(
           extracted,
           HLS_CONCURRENCY,
@@ -1096,13 +1138,13 @@ export default function Admin() {
             );
           },
           (done, total) => {
-            setUploadStatus(`Uploading HLS ${done}/${total} files`);
+            setVideoUploadStatus(`Uploading HLS ${done}/${total} files`);
           }
         );
         payload.hls_master_key = `videos/${editingId}/hls/index.m3u8`;
       }
 
-      setUploadStatus("Saving metadata...");
+      setVideoUploadStatus("Saving metadata...");
       await apiFetchVoid(`/api/admin/videos/${editingId}`, {
         method: "PUT",
         body: JSON.stringify(payload)
@@ -1116,7 +1158,7 @@ export default function Admin() {
       setError(err instanceof Error ? err.message : "Update failed.");
     } finally {
       setSaving(false);
-      setUploadStatus(null);
+      setVideoUploadStatus(null);
     }
   };
 
@@ -1130,25 +1172,28 @@ export default function Admin() {
 
     setCreatingAudio(true);
     setError(null);
-    setUploadStatus(null);
+    setAudioUploadStatus(null);
 
     try {
       const audioId = crypto.randomUUID();
       const ext = audioExtension(audioFile);
       const audioType = audioContentType(audioFile, ext);
-      setUploadStatus("Uploading audio...");
-      const audioKey = await uploadToR2(
+      setAudioUploadStatus("Preparing audio upload...");
+      const audioKey = await uploadMultipartAudio(
         { audioId },
-        `audio.${ext}`,
         audioFile,
-        audioType
+        ext,
+        audioType,
+        (done, total) => {
+          setAudioUploadStatus(`Uploading audio parts ${done}/${total}...`);
+        }
       );
 
       let thumbKey: string | null = null;
       if (audioThumb) {
         const thumbExt = thumbExtension(audioThumb);
         const thumbType = thumbContentType(audioThumb, thumbExt);
-        setUploadStatus("Uploading thumbnail...");
+        setAudioUploadStatus("Uploading thumbnail...");
         thumbKey = await uploadToR2(
           { audioId },
           `thumb.${thumbExt}`,
@@ -1177,7 +1222,7 @@ export default function Admin() {
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setCreatingAudio(false);
-      setUploadStatus(null);
+      setAudioUploadStatus(null);
     }
   };
 
@@ -1205,7 +1250,7 @@ export default function Admin() {
 
     setSavingAudio(true);
     setError(null);
-    setUploadStatus(null);
+    setAudioUploadStatus(null);
 
     try {
       const payload: Record<string, unknown> = {
@@ -1216,12 +1261,15 @@ export default function Admin() {
       if (editAudioFile) {
         const ext = audioExtension(editAudioFile);
         const audioType = audioContentType(editAudioFile, ext);
-        setUploadStatus("Uploading audio...");
-        const audioKey = await uploadToR2(
+        setAudioUploadStatus("Preparing audio upload...");
+        const audioKey = await uploadMultipartAudio(
           { audioId: editingAudioId },
-          `audio.${ext}`,
           editAudioFile,
-          audioType
+          ext,
+          audioType,
+          (done, total) => {
+            setAudioUploadStatus(`Uploading audio parts ${done}/${total}...`);
+          }
         );
         payload.audio_key = audioKey;
       }
@@ -1229,7 +1277,7 @@ export default function Admin() {
       if (editAudioThumb) {
         const thumbExt = thumbExtension(editAudioThumb);
         const thumbType = thumbContentType(editAudioThumb, thumbExt);
-        setUploadStatus("Uploading thumbnail...");
+        setAudioUploadStatus("Uploading thumbnail...");
         const thumbKey = await uploadToR2(
           { audioId: editingAudioId },
           `thumb.${thumbExt}`,
@@ -1239,7 +1287,7 @@ export default function Admin() {
         payload.thumb_key = thumbKey;
       }
 
-      setUploadStatus("Saving metadata...");
+      setAudioUploadStatus("Saving metadata...");
       await apiFetchVoid(`/api/admin/audios/${editingAudioId}`, {
         method: "PUT",
         body: JSON.stringify(payload)
@@ -1251,7 +1299,7 @@ export default function Admin() {
       setError(err instanceof Error ? err.message : "Update failed.");
     } finally {
       setSavingAudio(false);
-      setUploadStatus(null);
+      setAudioUploadStatus(null);
     }
   };
 
@@ -1265,13 +1313,13 @@ export default function Admin() {
 
     setCreatingImage(true);
     setError(null);
-    setUploadStatus(null);
+    setImageUploadStatus(null);
 
     try {
       const imageId = crypto.randomUUID();
       const ext = thumbExtension(imageFile);
       const imageType = thumbContentType(imageFile, ext);
-      setUploadStatus("Uploading image...");
+      setImageUploadStatus("Uploading image...");
       const imageKey = await uploadToR2(
         { imageId },
         `image.${ext}`,
@@ -1283,7 +1331,7 @@ export default function Admin() {
       if (imageThumb) {
         const thumbExt = thumbExtension(imageThumb);
         const thumbType = thumbContentType(imageThumb, thumbExt);
-        setUploadStatus("Uploading thumbnail...");
+        setImageUploadStatus("Uploading thumbnail...");
         thumbKey = await uploadToR2(
           { imageId },
           `thumb.${thumbExt}`,
@@ -1292,7 +1340,7 @@ export default function Admin() {
         );
       }
 
-      setUploadStatus("Saving metadata...");
+      setImageUploadStatus("Saving metadata...");
       await apiFetchVoid("/api/admin/images", {
         method: "POST",
         body: JSON.stringify({
@@ -1313,7 +1361,7 @@ export default function Admin() {
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setCreatingImage(false);
-      setUploadStatus(null);
+      setImageUploadStatus(null);
     }
   };
 
@@ -1345,7 +1393,7 @@ export default function Admin() {
 
     setSavingImage(true);
     setError(null);
-    setUploadStatus(null);
+    setImageUploadStatus(null);
 
     try {
       const payload: Record<string, unknown> = {
@@ -1356,7 +1404,7 @@ export default function Admin() {
       if (editImageFile) {
         const ext = thumbExtension(editImageFile);
         const imageType = thumbContentType(editImageFile, ext);
-        setUploadStatus("Uploading image...");
+        setImageUploadStatus("Uploading image...");
         const imageKey = await uploadToR2(
           { imageId: editingImageId },
           `image.${ext}`,
@@ -1369,7 +1417,7 @@ export default function Admin() {
       if (editImageThumb) {
         const thumbExt = thumbExtension(editImageThumb);
         const thumbType = thumbContentType(editImageThumb, thumbExt);
-        setUploadStatus("Uploading thumbnail...");
+        setImageUploadStatus("Uploading thumbnail...");
         const thumbKey = await uploadToR2(
           { imageId: editingImageId },
           `thumb.${thumbExt}`,
@@ -1379,7 +1427,7 @@ export default function Admin() {
         payload.thumb_key = thumbKey;
       }
 
-      setUploadStatus("Saving metadata...");
+      setImageUploadStatus("Saving metadata...");
       await apiFetchVoid(`/api/admin/images/${editingImageId}`, {
         method: "PUT",
         body: JSON.stringify(payload)
@@ -1393,7 +1441,7 @@ export default function Admin() {
       setError(err instanceof Error ? err.message : "Update failed.");
     } finally {
       setSavingImage(false);
-      setUploadStatus(null);
+      setImageUploadStatus(null);
     }
   };
 
@@ -1407,7 +1455,7 @@ export default function Admin() {
 
     setCreatingAlbum(true);
     setError(null);
-    setUploadStatus(null);
+    setAlbumUploadStatus(null);
 
     try {
       const albumId = crypto.randomUUID();
@@ -1423,7 +1471,7 @@ export default function Admin() {
         const imageId = crypto.randomUUID();
         const ext = thumbExtension(file);
         const imageType = thumbContentType(file, ext);
-        setUploadStatus(`Uploading image ${i + 1}/${albumFiles.length}...`);
+        setAlbumUploadStatus(`Uploading image ${i + 1}/${albumFiles.length}...`);
         const imageKey = await uploadToR2(
           { imageId },
           `image.${ext}`,
@@ -1438,7 +1486,7 @@ export default function Admin() {
         });
       }
 
-      setUploadStatus("Saving album...");
+      setAlbumUploadStatus("Saving album...");
       await apiFetchVoid("/api/admin/albums", {
         method: "POST",
         body: JSON.stringify({
@@ -1457,7 +1505,7 @@ export default function Admin() {
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setCreatingAlbum(false);
-      setUploadStatus(null);
+      setAlbumUploadStatus(null);
     }
   };
 
@@ -1797,8 +1845,8 @@ export default function Admin() {
             >
               {creating ? "Uploading..." : "Create video"}
             </button>
-            {creating && uploadStatus ? (
-              <div className="text-xs text-white/50">{uploadStatus}</div>
+            {creating && videoUploadStatus ? (
+              <div className="text-xs text-white/50">{videoUploadStatus}</div>
             ) : null}
             {!creating && videoSuccess ? (
               <div className="text-xs text-emerald-300/80">{videoSuccess}</div>
@@ -1888,8 +1936,8 @@ export default function Admin() {
               >
                 {saving ? "Saving..." : "Save changes"}
               </button>
-              {saving && uploadStatus ? (
-                <div className="text-xs text-white/50">{uploadStatus}</div>
+              {saving && videoUploadStatus ? (
+                <div className="text-xs text-white/50">{videoUploadStatus}</div>
               ) : null}
             </form>
           </div>
@@ -2010,8 +2058,8 @@ export default function Admin() {
             >
               {creatingShort ? "Uploading..." : "Create short"}
             </button>
-            {creatingShort && uploadStatus ? (
-              <div className="text-xs text-white/50">{uploadStatus}</div>
+            {creatingShort && shortUploadStatus ? (
+              <div className="text-xs text-white/50">{shortUploadStatus}</div>
             ) : null}
             {!creatingShort && shortSuccess ? (
               <div className="text-xs text-emerald-300/80">{shortSuccess}</div>
@@ -2103,8 +2151,8 @@ export default function Admin() {
               >
                 {savingShort ? "Saving..." : "Save changes"}
               </button>
-              {savingShort && uploadStatus ? (
-                <div className="text-xs text-white/50">{uploadStatus}</div>
+              {savingShort && shortUploadStatus ? (
+                <div className="text-xs text-white/50">{shortUploadStatus}</div>
               ) : null}
             </form>
           </div>
@@ -2215,8 +2263,8 @@ export default function Admin() {
             >
               {creatingAudio ? "Uploading..." : "Create audio"}
             </button>
-            {creatingAudio && uploadStatus ? (
-              <div className="text-xs text-white/50">{uploadStatus}</div>
+            {creatingAudio && audioUploadStatus ? (
+              <div className="text-xs text-white/50">{audioUploadStatus}</div>
             ) : null}
           </form>
         </div>
@@ -2283,8 +2331,8 @@ export default function Admin() {
               >
                 {savingAudio ? "Saving..." : "Save changes"}
               </button>
-              {savingAudio && uploadStatus ? (
-                <div className="text-xs text-white/50">{uploadStatus}</div>
+              {savingAudio && audioUploadStatus ? (
+                <div className="text-xs text-white/50">{audioUploadStatus}</div>
               ) : null}
             </form>
           </div>
@@ -2399,8 +2447,8 @@ export default function Admin() {
             >
               {creatingImage ? "Uploading..." : "Create image"}
             </button>
-            {creatingImage && uploadStatus ? (
-              <div className="text-xs text-white/50">{uploadStatus}</div>
+            {creatingImage && imageUploadStatus ? (
+              <div className="text-xs text-white/50">{imageUploadStatus}</div>
             ) : null}
           </form>
         </div>
@@ -2476,8 +2524,8 @@ export default function Admin() {
               >
                 {savingImage ? "Saving..." : "Save changes"}
               </button>
-              {savingImage && uploadStatus ? (
-                <div className="text-xs text-white/50">{uploadStatus}</div>
+              {savingImage && imageUploadStatus ? (
+                <div className="text-xs text-white/50">{imageUploadStatus}</div>
               ) : null}
             </form>
           </div>
@@ -2589,8 +2637,8 @@ export default function Admin() {
             >
               {creatingAlbum ? "Uploading..." : "Create album"}
             </button>
-            {creatingAlbum && uploadStatus ? (
-              <div className="text-xs text-white/50">{uploadStatus}</div>
+            {creatingAlbum && albumUploadStatus ? (
+              <div className="text-xs text-white/50">{albumUploadStatus}</div>
             ) : null}
           </form>
         </div>

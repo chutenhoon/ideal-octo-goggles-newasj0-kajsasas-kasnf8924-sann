@@ -6,8 +6,13 @@ import {
   listMultipartParts
 } from "../../../../_lib/r2Multipart";
 
-const KEY_RE =
-  /^(videos|shorts)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/pc\.mp4$/i;
+const UUID =
+  "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+const VIDEO_KEY_RE = new RegExp(`^(videos|shorts)/${UUID}/pc\\.mp4$`, "i");
+const AUDIO_KEY_RE = new RegExp(
+  `^audios/${UUID}/audio\\.(mp3|m4a|wav|ogg)$`,
+  "i"
+);
 
 export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
   if (request.method !== "POST") {
@@ -52,7 +57,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
     return errorJson(400, "Missing completion fields.");
   }
 
-  if (!KEY_RE.test(r2Key)) {
+  if (!VIDEO_KEY_RE.test(r2Key) && !AUDIO_KEY_RE.test(r2Key)) {
     return errorJson(400, "Invalid upload key.");
   }
 
