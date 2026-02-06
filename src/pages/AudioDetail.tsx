@@ -58,7 +58,8 @@ export default function AudioDetail() {
   useEffect(() => {
     const element = audioRef.current;
     if (!element || !data) return;
-    element.load();
+    element.pause();
+    element.currentTime = 0;
     setCurrentTime(0);
     setDuration(0);
     setIsPlaying(false);
@@ -240,7 +241,7 @@ export default function AudioDetail() {
           <audio
             ref={audioRef}
             src={audioSrc}
-            preload="metadata"
+            preload="none"
             onPlaying={handlePlaying}
             onPause={handlePause}
             onEnded={handlePause}

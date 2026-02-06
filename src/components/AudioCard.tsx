@@ -78,15 +78,6 @@ export default function AudioCard({ audio }: { audio: AudioItem }) {
     return () => stopRaf();
   }, []);
 
-  useEffect(() => {
-    const element = audioRef.current;
-    if (!element || !shouldLoad) return;
-    if (!element.src) {
-      element.src = audioSrc;
-      element.load();
-    }
-  }, [audioSrc, shouldLoad]);
-
   const togglePlay = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -204,7 +195,7 @@ export default function AudioCard({ audio }: { audio: AudioItem }) {
         <audio
           ref={audioRef}
           src={shouldLoad ? audioSrc : undefined}
-          preload="metadata"
+          preload="none"
           onPlaying={handlePlaying}
           onPause={handlePause}
           onEnded={handlePause}
