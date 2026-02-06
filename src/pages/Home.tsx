@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../api/client";
 import AudioCard from "../components/AudioCard";
+import HorizontalScrollRow from "../components/HorizontalScrollRow";
 import ImageCard, { ImageItem } from "../components/ImageCard";
 import Loading from "../components/Loading";
 import NoteCard, { NoteItem } from "../components/NoteCard";
@@ -172,7 +173,7 @@ export default function Home() {
                 <div className="text-xs uppercase tracking-[0.4em] text-white/35">
                   Shorts
                 </div>
-                <div className="shorts-scroll flex items-start gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
+                <HorizontalScrollRow className="shorts-scroll flex items-start gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
                   {filteredShorts.map((short) => (
                     <div
                       key={short.id}
@@ -181,7 +182,7 @@ export default function Home() {
                       <ShortCard short={short} />
                     </div>
                   ))}
-                </div>
+                </HorizontalScrollRow>
               </div>
             ) : null}
           </section>

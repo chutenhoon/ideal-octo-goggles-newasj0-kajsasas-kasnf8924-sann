@@ -1,6 +1,7 @@
 ﻿import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { apiFetch } from "../api/client";
+import HorizontalScrollRow from "../components/HorizontalScrollRow";
 import ShortCard, { ShortItem } from "../components/ShortCard";
 import VideoCard, { VideoItem } from "../components/VideoCard";
 import Loading from "../components/Loading";
@@ -71,7 +72,7 @@ export default function Gallery() {
             <div className="text-xs uppercase tracking-[0.4em] text-white/35">
               Shorts
             </div>
-            <div className="shorts-scroll flex items-start gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
+            <HorizontalScrollRow className="shorts-scroll flex items-start gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
               {filteredShorts.map((short) => (
                 <div
                   key={short.id}
@@ -80,7 +81,7 @@ export default function Gallery() {
                   <ShortCard short={short} />
                 </div>
               ))}
-            </div>
+            </HorizontalScrollRow>
           </div>
         ) : null}
       </div>
