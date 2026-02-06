@@ -15,33 +15,37 @@ import Notes from "./pages/Notes";
 import NoteDetail from "./pages/NoteDetail";
 import Web from "./pages/Web";
 import WebDetail from "./pages/WebDetail";
+import ScrollToTop from "./components/ScrollToTop";
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/admin" element={<Admin />} />
-      <Route
-        element={
-          <RequireAuth>
-            <MainLayout />
-          </RequireAuth>
-        }
-      >
-        <Route path="/" element={<Home />} />
-        <Route path="/videos" element={<Gallery />} />
-        <Route path="/watch/:slug" element={<Watch />} />
-        <Route path="/shorts/:slug" element={<Shorts />} />
-        <Route path="/audio" element={<Audio />} />
-        <Route path="/audio/:id" element={<AudioDetail />} />
-        <Route path="/images" element={<Images />} />
-        <Route path="/images/:id" element={<ImageDetail />} />
-        <Route path="/notes" element={<Notes />} />
-        <Route path="/notes/:id" element={<NoteDetail />} />
-        <Route path="/web" element={<Web />} />
-        <Route path="/web/:slug" element={<WebDetail />} />
-        <Route path="*" element={<Home />} />
-      </Route>
-    </Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/admin" element={<Admin />} />
+        <Route
+          element={
+            <RequireAuth>
+              <MainLayout />
+            </RequireAuth>
+          }
+        >
+          <Route path="/" element={<Home />} />
+          <Route path="/videos" element={<Gallery />} />
+          <Route path="/watch/:slug" element={<Watch />} />
+          <Route path="/shorts/:slug" element={<Shorts />} />
+          <Route path="/audio" element={<Audio />} />
+          <Route path="/audio/:id" element={<AudioDetail />} />
+          <Route path="/images" element={<Images />} />
+          <Route path="/images/:id" element={<ImageDetail />} />
+          <Route path="/notes" element={<Notes />} />
+          <Route path="/notes/:id" element={<NoteDetail />} />
+          <Route path="/web" element={<Web />} />
+          <Route path="/web/:slug" element={<WebDetail />} />
+          <Route path="*" element={<Home />} />
+        </Route>
+      </Routes>
+    </>
   );
 }

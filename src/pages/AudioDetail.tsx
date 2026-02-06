@@ -60,6 +60,7 @@ export default function AudioDetail() {
     if (!element || !data) return;
     element.pause();
     element.currentTime = 0;
+    element.load();
     setCurrentTime(0);
     setDuration(0);
     setIsPlaying(false);
@@ -241,7 +242,7 @@ export default function AudioDetail() {
           <audio
             ref={audioRef}
             src={audioSrc}
-            preload="none"
+            preload="metadata"
             onPlaying={handlePlaying}
             onPause={handlePause}
             onEnded={handlePause}

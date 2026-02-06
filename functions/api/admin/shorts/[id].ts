@@ -206,22 +206,38 @@ export const onRequest: PagesFunction<Env> = async ({ request, env, params }) =>
 
   if (hasHlsKey) {
     const nextHlsKey = payload.hls_master_key?.toString().trim() || "";
-    if (!nextHlsKey || !isValidHlsKey(id, nextHlsKey)) {
-      return errorJson(400, "Invalid hls_master_key.");
-    }
-    updates.push("hls_master_key = ?");
-    paramsList.push(nextHlsKey);
-
-    const previousPrefix = prefixFromKey(currentHlsKey);
-    const nextPrefix = prefixFromKey(nextHlsKey);
-    if (previousPrefix && nextPrefix && previousPrefix !== nextPrefix) {
-      try {
-        const list = await env.R2_VIDEOS.list({ prefix: previousPrefix });
-        if (list.objects.length > 0) {
-          await env.R2_VIDEOS.delete(list.objects.map((obj) => obj.key));
+    if (!nextHlsKey) {
+      updates.push("hls_master_key = ?");
+      paramsList.push("");
+      const previousPrefix = prefixFromKey(currentHlsKey);
+      if (previousPrefix) {
+        try {
+          const list = await env.R2_VIDEOS.list({ prefix: previousPrefix });
+          if (list.objects.length > 0) {
+            await env.R2_VIDEOS.delete(list.objects.map((obj) => obj.key));
+          }
+        } catch {
+          // Best-effort cleanup.
         }
-      } catch {
-        // Best-effort cleanup.
+      }
+    } else {
+      if (!isValidHlsKey(id, nextHlsKey)) {
+        return errorJson(400, "Invalid hls_master_key.");
+      }
+      updates.push("hls_master_key = ?");
+      paramsList.push(nextHlsKey);
+
+      const previousPrefix = prefixFromKey(currentHlsKey);
+      const nextPrefix = prefixFromKey(nextHlsKey);
+      if (previousPrefix && nextPrefix && previousPrefix !== nextPrefix) {
+        try {
+          const list = await env.R2_VIDEOS.list({ prefix: previousPrefix });
+          if (list.objects.length > 0) {
+            await env.R2_VIDEOS.delete(list.objects.map((obj) => obj.key));
+          }
+        } catch {
+          // Best-effort cleanup.
+        }
       }
     }
   }

@@ -195,7 +195,7 @@ export default function AudioCard({ audio }: { audio: AudioItem }) {
         <audio
           ref={audioRef}
           src={shouldLoad ? audioSrc : undefined}
-          preload="none"
+          preload="metadata"
           onPlaying={handlePlaying}
           onPause={handlePause}
           onEnded={handlePause}

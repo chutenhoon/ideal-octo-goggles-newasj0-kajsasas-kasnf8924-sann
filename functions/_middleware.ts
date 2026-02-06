@@ -13,10 +13,13 @@ const MEDIA_CONTENT_TYPES: Record<string, string> = {
   ts: "video/mp2t",
   m4s: "video/iso.segment",
   mp4: "video/mp4",
+  aac: "audio/aac",
   mp3: "audio/mpeg",
   m4a: "audio/mp4",
   wav: "audio/wav",
   ogg: "audio/ogg",
+  flac: "audio/flac",
+  opus: "audio/opus",
   webm: "audio/webm",
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
@@ -51,6 +54,21 @@ function prefixFromKey(key: string) {
   const idx = key.lastIndexOf("/");
   if (idx === -1) return null;
   return key.slice(0, idx + 1);
+}
+
+function parseByteRange(rangeHeader: string, size: number) {
+  const match = /bytes=(\d+)-(\d*)/.exec(rangeHeader);
+  if (!match) return null;
+
+  const start = Number(match[1]);
+  const end = match[2] ? Number(match[2]) : size - 1;
+  const safeEnd = Math.min(end, size - 1);
+  if (Number.isNaN(start) || Number.isNaN(safeEnd) || start > safeEnd) {
+    return null;
+  }
+
+  const length = safeEnd - start + 1;
+  return { start, end: safeEnd, length };
 }
 
 export const onRequest: PagesFunction<Env> = async ({ request, env, next }) => {
@@ -185,21 +203,69 @@ export const onRequest: PagesFunction<Env> = async ({ request, env, next }) => {
           return errorJson(400, "Invalid path.");
         }
 
-        const object = await env.R2_VIDEOS.get(relPath);
-        if (!object) return errorJson(404, "Not found.");
-
         const headers = new Headers();
         headers.set(
           "Content-Type",
-          object.httpMetadata?.contentType || contentTypeForKey(relPath)
+          contentTypeForKey(relPath)
         );
         headers.set("Cache-Control", "public, max-age=3600");
-        if (object.size) {
-          headers.set("Content-Length", object.size.toString());
+        headers.set("Accept-Ranges", "bytes");
+        headers.set("Vary", "Range");
+
+        if (request.method === "HEAD") {
+          const head = await env.R2_VIDEOS.head(relPath);
+          if (!head) return errorJson(404, "Not found.");
+          if (head.httpMetadata?.contentType) {
+            headers.set("Content-Type", head.httpMetadata.contentType);
+          }
+          headers.set("Content-Length", head.size.toString());
+          return new Response(null, {
+            status: 200,
+            headers
+          });
         }
 
+        const rangeHeader = request.headers.get("Range");
+        let status = 200;
+        let object: R2ObjectBody | null = null;
+
+        if (rangeHeader) {
+          const head = await env.R2_VIDEOS.head(relPath);
+          if (!head) return errorJson(404, "Not found.");
+          if (head.httpMetadata?.contentType) {
+            headers.set("Content-Type", head.httpMetadata.contentType);
+          }
+
+          const parsedRange = parseByteRange(rangeHeader, head.size);
+          if (!parsedRange) {
+            headers.set("Content-Range", `bytes */${head.size}`);
+            return new Response(null, { status: 416, headers });
+          }
+
+          object = await env.R2_VIDEOS.get(relPath, {
+            range: { offset: parsedRange.start, length: parsedRange.length }
+          });
+
+          status = 206;
+          headers.set(
+            "Content-Range",
+            `bytes ${parsedRange.start}-${parsedRange.end}/${head.size}`
+          );
+          headers.set("Content-Length", parsedRange.length.toString());
+        } else {
+          object = await env.R2_VIDEOS.get(relPath);
+          if (object?.httpMetadata?.contentType) {
+            headers.set("Content-Type", object.httpMetadata.contentType);
+          }
+          if (object?.size) {
+            headers.set("Content-Length", object.size.toString());
+          }
+        }
+
+        if (!object) return errorJson(404, "Not found.");
+
         return new Response(object.body, {
-          status: 200,
+          status,
           headers
         });
       }

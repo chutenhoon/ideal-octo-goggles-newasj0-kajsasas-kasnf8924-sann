@@ -67,7 +67,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
   const title = payload.title?.toString().trim() || "";
   const pcKey = payload.pc_key?.toString().trim() || "";
   const hlsMasterKey = payload.hls_master_key?.toString().trim() || "";
-  if (!title || !pcKey || !hlsMasterKey) {
+  if (!title || !pcKey) {
     return errorJson(400, "Missing required fields.");
   }
 
@@ -91,7 +91,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
   if (!isValidPcKey(id, pcKey)) {
     return errorJson(400, "Invalid pc_key.");
   }
-  if (!isValidHlsKey(id, hlsMasterKey)) {
+  if (hlsMasterKey && !isValidHlsKey(id, hlsMasterKey)) {
     return errorJson(400, "Invalid hls_master_key.");
   }
 
@@ -136,7 +136,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
       title,
       description || null,
       pcKey,
-      hlsMasterKey,
+      hlsMasterKey || "",
       thumbKey,
       pcKey,
       thumbKey,

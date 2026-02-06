@@ -116,15 +116,20 @@ const HLS_CONCURRENCY = 3;
 const MP4_CONCURRENCY = 4;
 const AUDIO_CONCURRENCY = 3;
 const HLS_MASTER_NAME = "index.m3u8";
+const AUDIO_ACCEPT_TYPES =
+  ".m4a,.aac,.mp3,.wav,.ogg,.flac,.opus,audio/mp4,audio/aac,audio/mpeg,audio/wav,audio/ogg,audio/flac,audio/opus,audio/*";
 const EXT_CONTENT_TYPES: Record<string, string> = {
   m3u8: "application/vnd.apple.mpegurl",
   ts: "video/mp2t",
   m4s: "video/iso.segment",
   mp4: "video/mp4",
+  aac: "audio/aac",
   mp3: "audio/mpeg",
   m4a: "audio/mp4",
   wav: "audio/wav",
   ogg: "audio/ogg",
+  flac: "audio/flac",
+  opus: "audio/opus",
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
   png: "image/png",
@@ -309,13 +314,24 @@ function thumbContentType(file: File, ext: string) {
 
 function audioExtension(file: File) {
   const ext = file.name.split(".").pop()?.toLowerCase() || "";
-  if (ext === "mp3" || ext === "m4a" || ext === "wav" || ext === "ogg") {
+  if (
+    ext === "aac" ||
+    ext === "mp3" ||
+    ext === "m4a" ||
+    ext === "wav" ||
+    ext === "ogg" ||
+    ext === "flac" ||
+    ext === "opus"
+  ) {
     return ext;
   }
+  if (file.type === "audio/aac" || file.type === "audio/x-aac") return "aac";
   if (file.type === "audio/mpeg") return "mp3";
-  if (file.type === "audio/mp4") return "m4a";
+  if (file.type === "audio/mp4" || file.type === "audio/x-m4a") return "m4a";
   if (file.type === "audio/wav") return "wav";
   if (file.type === "audio/ogg") return "ogg";
+  if (file.type === "audio/flac") return "flac";
+  if (file.type === "audio/opus") return "opus";
   return "mp3";
 }
 
@@ -2242,7 +2258,7 @@ export default function Admin() {
                 <span>Audio file (required)</span>
                 <input
                   type="file"
-                  accept="audio/*"
+                  accept={AUDIO_ACCEPT_TYPES}
                   onChange={(event) =>
                     setAudioFile(event.target.files?.[0] || null)
                   }
@@ -2311,7 +2327,7 @@ export default function Admin() {
                   <span>Replace audio</span>
                   <input
                     type="file"
-                    accept="audio/*"
+                    accept={AUDIO_ACCEPT_TYPES}
                     onChange={(event) =>
                       setEditAudioFile(event.target.files?.[0] || null)
                     }
