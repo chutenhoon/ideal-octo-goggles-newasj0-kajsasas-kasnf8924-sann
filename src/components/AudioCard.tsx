@@ -31,6 +31,8 @@ export default function AudioCard({ audio }: { audio: AudioItem }) {
   const rafRef = useRef<number | null>(null);
   const lastTick = useRef(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [pendingPlay, setPendingPlay] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [shouldLoad, setShouldLoad] = useState(false);
@@ -65,7 +67,9 @@ export default function AudioCard({ audio }: { audio: AudioItem }) {
     if (time - lastTick.current > 80) {
       lastTick.current = time;
       setCurrentTime(element.currentTime || 0);
-      setDuration(element.duration || 0);
+      if (Number.isFinite(element.duration) && element.duration > 0) {
+        setDuration(element.duration);
+      }
     }
     rafRef.current = requestAnimationFrame(tick);
   };
@@ -83,23 +87,34 @@ export default function AudioCard({ audio }: { audio: AudioItem }) {
     }
   }, [audioSrc, shouldLoad]);
 
-  const togglePlay = async (event: MouseEvent<HTMLButtonElement>) => {
+  const togglePlay = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
     const element = audioRef.current;
     if (!element) return;
     if (!element.src) {
       element.src = audioSrc;
+      element.load();
     }
     if (element.paused) {
-      await element.play().catch(() => undefined);
+      setPendingPlay(true);
+      setIsBuffering(true);
+      const playPromise = element.play();
+      if (playPromise) {
+        playPromise.catch(() => {
+          setPendingPlay(false);
+          setIsBuffering(false);
+        });
+      }
     } else {
       element.pause();
     }
   };
 
-  const handlePlay = () => {
+  const handlePlaying = () => {
     setIsPlaying(true);
+    setPendingPlay(false);
+    setIsBuffering(false);
     if (!rafRef.current) {
       rafRef.current = requestAnimationFrame(tick);
     }
@@ -107,15 +122,21 @@ export default function AudioCard({ audio }: { audio: AudioItem }) {
 
   const handlePause = () => {
     setIsPlaying(false);
+    setPendingPlay(false);
+    setIsBuffering(false);
     stopRaf();
   };
 
   const handleLoaded = () => {
     const element = audioRef.current;
     if (!element) return;
-    setDuration(element.duration || 0);
+    if (Number.isFinite(element.duration) && element.duration > 0) {
+      setDuration(element.duration);
+    }
   };
 
+  const showBuffering = isBuffering || (pendingPlay && !isPlaying);
+  const durationLabel = duration > 0 ? formatTime(duration) : "--:--";
   const progress = duration ? Math.min(100, (currentTime / duration) * 100) : 0;
 
   return (
@@ -142,7 +163,7 @@ export default function AudioCard({ audio }: { audio: AudioItem }) {
               {audio.title}
             </div>
             <div className="text-xs text-white/40">
-              {formatTime(duration)}
+              {durationLabel}
             </div>
           </div>
           <button
@@ -151,7 +172,12 @@ export default function AudioCard({ audio }: { audio: AudioItem }) {
             className="h-9 w-9 rounded-full bg-white/10 text-white/80 flex items-center justify-center"
             aria-label={isPlaying ? "Pause audio" : "Play audio"}
           >
-            {isPlaying ? (
+            {showBuffering ? (
+              <span
+                className="loader-ring"
+                style={{ width: 16, height: 16, borderWidth: 2 }}
+              />
+            ) : isPlaying ? (
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
                 <rect x="6" y="5" width="4" height="14" rx="1" />
                 <rect x="14" y="5" width="4" height="14" rx="1" />
@@ -179,9 +205,11 @@ export default function AudioCard({ audio }: { audio: AudioItem }) {
           ref={audioRef}
           src={shouldLoad ? audioSrc : undefined}
           preload="metadata"
-          onPlay={handlePlay}
+          onPlaying={handlePlaying}
           onPause={handlePause}
           onEnded={handlePause}
+          onWaiting={() => setIsBuffering(true)}
+          onCanPlay={() => setIsBuffering(false)}
           onLoadedMetadata={handleLoaded}
           onDurationChange={handleLoaded}
         />

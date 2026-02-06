@@ -28,6 +28,9 @@ export default function AudioDetail() {
   const rafRef = useRef<number | null>(null);
   const lastTick = useRef(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [pendingPlay, setPendingPlay] = useState(false);
+  const [seeking, setSeeking] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.9);
@@ -52,19 +55,36 @@ export default function AudioDetail() {
     };
   }, []);
 
+  useEffect(() => {
+    const element = audioRef.current;
+    if (!element || !data) return;
+    element.load();
+    setCurrentTime(0);
+    setDuration(0);
+    setIsPlaying(false);
+    setPendingPlay(false);
+    setIsBuffering(false);
+  }, [data]);
+
   const tick = (time: number) => {
     const element = audioRef.current;
     if (!element) return;
     if (time - lastTick.current > 80) {
       lastTick.current = time;
-      setCurrentTime(element.currentTime || 0);
-      setDuration(element.duration || 0);
+      if (!seeking) {
+        setCurrentTime(element.currentTime || 0);
+      }
+      if (Number.isFinite(element.duration) && element.duration > 0) {
+        setDuration(element.duration);
+      }
     }
     rafRef.current = requestAnimationFrame(tick);
   };
 
-  const handlePlay = () => {
+  const handlePlaying = () => {
     setIsPlaying(true);
+    setPendingPlay(false);
+    setIsBuffering(false);
     if (!rafRef.current) {
       rafRef.current = requestAnimationFrame(tick);
     }
@@ -72,17 +92,27 @@ export default function AudioDetail() {
 
   const handlePause = () => {
     setIsPlaying(false);
+    setPendingPlay(false);
+    setIsBuffering(false);
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     }
   };
 
-  const togglePlay = async () => {
+  const togglePlay = () => {
     const element = audioRef.current;
     if (!element) return;
     if (element.paused) {
-      await element.play().catch(() => undefined);
+      setPendingPlay(true);
+      setIsBuffering(true);
+      const playPromise = element.play();
+      if (playPromise) {
+        playPromise.catch(() => {
+          setPendingPlay(false);
+          setIsBuffering(false);
+        });
+      }
     } else {
       element.pause();
     }
@@ -90,9 +120,10 @@ export default function AudioDetail() {
 
   const handleSeek = (value: number) => {
     const element = audioRef.current;
-    if (!element) return;
-    element.currentTime = value;
     setCurrentTime(value);
+    if (element) {
+      element.currentTime = value;
+    }
   };
 
   if (isLoading) {
@@ -113,6 +144,8 @@ export default function AudioDetail() {
     ? "Do lỗi hệ thống không ghi lại được hình ảnh"
     : data.description || null;
   const progress = duration ? Math.min(100, (currentTime / duration) * 100) : 0;
+  const showBuffering = isBuffering || (pendingPlay && !isPlaying);
+  const durationLabel = duration > 0 ? formatTime(duration) : "--:--";
 
   return (
     <div className="min-h-screen px-5 py-8 md:px-10">
@@ -142,7 +175,12 @@ export default function AudioDetail() {
               className="h-12 w-12 rounded-full bg-white/10 text-white/80 flex items-center justify-center"
               aria-label={isPlaying ? "Pause audio" : "Play audio"}
             >
-              {isPlaying ? (
+              {showBuffering ? (
+                <span
+                  className="loader-ring"
+                  style={{ width: 18, height: 18, borderWidth: 2 }}
+                />
+              ) : isPlaying ? (
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
                   <rect x="6" y="5" width="4" height="14" rx="1" />
                   <rect x="14" y="5" width="4" height="14" rx="1" />
@@ -155,11 +193,11 @@ export default function AudioDetail() {
             </button>
             <div className="flex-1">
               <div className="flex items-center justify-between text-xs text-white/60 mb-2">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
+                <span className="tabular-nums">{formatTime(currentTime)}</span>
+                <span className="tabular-nums">{durationLabel}</span>
               </div>
-              <div className="relative h-2">
-                <div className="h-full bg-white/10 rounded-full overflow-hidden">
+              <div className="relative h-4">
+                <div className="absolute inset-0 top-1/2 -translate-y-1/2 h-2 bg-white/10 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-white/50 transition-[width] duration-150 motion-reduce:transition-none"
                     style={{ width: `${progress}%` }}
@@ -171,8 +209,17 @@ export default function AudioDetail() {
                   max={duration || 0}
                   step={0.1}
                   value={currentTime}
+                  onInput={(event) =>
+                    setCurrentTime(Number(event.currentTarget.value))
+                  }
                   onChange={(event) => handleSeek(Number(event.target.value))}
-                  className="absolute inset-0 w-full h-2 opacity-0 cursor-pointer"
+                  onPointerDown={() => setSeeking(true)}
+                  onPointerUp={(event) => {
+                    setSeeking(false);
+                    handleSeek(Number(event.currentTarget.value));
+                  }}
+                  onPointerCancel={() => setSeeking(false)}
+                  className="audio-range absolute inset-0 w-full h-4 cursor-pointer"
                 />
               </div>
             </div>
@@ -190,18 +237,29 @@ export default function AudioDetail() {
             </div>
           </div>
 
-        <audio
-          ref={audioRef}
-          src={audioSrc}
-          preload="metadata"
-          onPlay={handlePlay}
-          onPause={handlePause}
-          onEnded={handlePause}
-          onLoadedMetadata={(event) => {
-            setDuration(event.currentTarget.duration || 0);
-          }}
-          className="hidden"
-        />
+          <audio
+            ref={audioRef}
+            src={audioSrc}
+            preload="metadata"
+            onPlaying={handlePlaying}
+            onPause={handlePause}
+            onEnded={handlePause}
+            onWaiting={() => setIsBuffering(true)}
+            onCanPlay={() => setIsBuffering(false)}
+            onLoadedMetadata={(event) => {
+              const next = event.currentTarget.duration || 0;
+              if (Number.isFinite(next) && next > 0) {
+                setDuration(next);
+              }
+            }}
+            onDurationChange={(event) => {
+              const next = event.currentTarget.duration || 0;
+              if (Number.isFinite(next) && next > 0) {
+                setDuration(next);
+              }
+            }}
+            className="hidden"
+          />
         </div>
       </div>
     </div>
