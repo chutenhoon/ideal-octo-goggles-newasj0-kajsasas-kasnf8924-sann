@@ -6,6 +6,8 @@ import { apiFetch } from "../api/client";
 import Loading from "../components/Loading";
 import type { ShortItem } from "../components/ShortCard";
 
+const SWIPE_HINT_STORAGE_KEY = "shortsSwipeHintSeen";
+
 function IconPlay() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current">
@@ -52,13 +54,16 @@ function formatTime(value: number) {
 
 function ShortSlide({
   short,
-  active
+  active,
+  showSwipeHint
 }: {
   short: ShortItem;
   active: boolean;
+  showSwipeHint: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const volumeControlRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
@@ -141,6 +146,25 @@ function ShortSlide({
   }, [active, short.slug]);
 
   useEffect(() => {
+    if (active) return;
+    setShowVolume(false);
+  }, [active]);
+
+  useEffect(() => {
+    if (!showVolume) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (volumeControlRef.current?.contains(target)) return;
+      setShowVolume(false);
+    };
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [showVolume]);
+
+  useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     const onPlay = () => setIsPlaying(true);
@@ -180,10 +204,6 @@ function ShortSlide({
     }
   };
 
-  const toggleMute = () => {
-    setMuted((prev) => !prev);
-  };
-
   const handleVolumeChange = (value: number) => {
     const next = Math.max(0, Math.min(1, value));
     setVolume(next);
@@ -212,6 +232,14 @@ function ShortSlide({
           }
           onClick={togglePlay}
         />
+
+        {showSwipeHint ? (
+          <div className="pointer-events-none absolute inset-x-0 top-5 z-20 flex justify-center px-4">
+            <div className="shorts-swipe-hint rounded-full border border-white/20 bg-black/45 px-4 py-2 text-[11px] font-medium text-white/90 backdrop-blur-md">
+              Vuot len/xuong de xem them Shorts
+            </div>
+          </div>
+        ) : null}
 
         <div className="absolute inset-x-0 bottom-0 px-4 pb-4 pt-12 bg-gradient-to-t from-black/70 via-black/20 to-transparent">
           <div className="flex items-center justify-between text-white/90 text-xs mb-3">
@@ -245,19 +273,20 @@ function ShortSlide({
             </span>
 
             <div
-              className="relative"
+              ref={volumeControlRef}
+              className="relative ml-1"
               onMouseEnter={() => setShowVolume(true)}
-              onMouseLeave={() => setShowVolume(false)}
             >
               <button
                 onClick={() => setShowVolume((prev) => !prev)}
-                className="ml-1 h-8 w-8 rounded-full bg-white/15 text-white flex items-center justify-center"
-                aria-label="Mute"
+                className="h-9 w-9 rounded-full bg-white/15 text-white flex items-center justify-center"
+                aria-label="Open volume controls"
+                aria-expanded={showVolume}
               >
                 <IconVolume muted={muted} />
               </button>
               <div
-                className={`absolute bottom-full mb-2 right-0 w-24 rounded-full bg-black/70 px-2 py-2 transition ${
+                className={`absolute bottom-full right-0 z-20 w-24 rounded-full bg-black/70 px-2 py-2 transition ${
                   showVolume
                     ? "opacity-100 scale-100"
                     : "opacity-0 scale-95 pointer-events-none"
@@ -288,10 +317,13 @@ export default function Shorts() {
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [showSwipeHint, setShowSwipeHint] = useState(false);
   const initialScrollDone = useRef(false);
 
   useEffect(() => {
     initialScrollDone.current = false;
+    itemRefs.current = [];
+    setActiveIndex(0);
   }, [slug]);
 
   const { data: shorts, isLoading } = useQuery({
@@ -299,26 +331,53 @@ export default function Shorts() {
     queryFn: () => apiFetch<ShortItem[]>("/api/shorts")
   });
 
-  const initialIndex = useMemo(() => {
-    if (!shorts || !shorts.length) return 0;
-    const idx = shorts.findIndex((item) => item.slug === slug);
-    return idx >= 0 ? idx : 0;
+  const orderedShorts = useMemo(() => {
+    if (!shorts || shorts.length === 0) return [];
+    if (!slug) return shorts;
+    const index = shorts.findIndex((item) => item.slug === slug);
+    if (index <= 0) return shorts;
+    return [...shorts.slice(index), ...shorts.slice(0, index)];
   }, [shorts, slug]);
 
   useEffect(() => {
-    if (!shorts || shorts.length === 0) return;
+    if (orderedShorts.length === 0) return;
     if (initialScrollDone.current) return;
-    const target = itemRefs.current[initialIndex];
+    const target = itemRefs.current[0];
     if (target) {
       target.scrollIntoView({ block: "start" });
-      setActiveIndex(initialIndex);
+      setActiveIndex(0);
       initialScrollDone.current = true;
     }
-  }, [shorts, initialIndex]);
+  }, [orderedShorts]);
+
+  useEffect(() => {
+    if (orderedShorts.length === 0) return;
+    const seen =
+      typeof window !== "undefined" &&
+      window.localStorage.getItem(SWIPE_HINT_STORAGE_KEY) === "1";
+    if (seen) {
+      setShowSwipeHint(false);
+      return;
+    }
+    setShowSwipeHint(true);
+    const timer = window.setTimeout(() => {
+      setShowSwipeHint(false);
+      window.localStorage.setItem(SWIPE_HINT_STORAGE_KEY, "1");
+    }, 4200);
+    return () => window.clearTimeout(timer);
+  }, [orderedShorts.length]);
+
+  useEffect(() => {
+    if (!showSwipeHint || activeIndex === 0) return;
+    setShowSwipeHint(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(SWIPE_HINT_STORAGE_KEY, "1");
+    }
+  }, [activeIndex, showSwipeHint]);
 
   useEffect(() => {
     const root = containerRef.current;
-    if (!root || !shorts || shorts.length === 0) return;
+    if (!root || orderedShorts.length === 0) return;
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -336,7 +395,7 @@ export default function Shorts() {
     });
 
     return () => observer.disconnect();
-  }, [shorts]);
+  }, [orderedShorts]);
 
   if (isLoading) {
     return (
@@ -378,9 +437,16 @@ export default function Shorts() {
         </Link>
         <div
           ref={containerRef}
+          onScroll={() => {
+            if (!showSwipeHint) return;
+            setShowSwipeHint(false);
+            if (typeof window !== "undefined") {
+              window.localStorage.setItem(SWIPE_HINT_STORAGE_KEY, "1");
+            }
+          }}
           className="shorts-scroll h-[calc(100vh-140px)] md:h-[calc(100vh-160px)] overflow-y-auto snap-y snap-mandatory scroll-smooth overscroll-contain touch-pan-y"
         >
-          {shorts.map((short, index) => (
+          {orderedShorts.map((short, index) => (
             <div
               key={short.id}
               ref={(el) => {
@@ -389,7 +455,11 @@ export default function Shorts() {
               data-index={index}
               className="snap-start snap-always h-full"
             >
-              <ShortSlide short={short} active={index === activeIndex} />
+              <ShortSlide
+                short={short}
+                active={index === activeIndex}
+                showSwipeHint={showSwipeHint && index === 0 && activeIndex === 0}
+              />
             </div>
           ))}
           <div className="snap-start h-full flex items-center justify-center text-white/60">
