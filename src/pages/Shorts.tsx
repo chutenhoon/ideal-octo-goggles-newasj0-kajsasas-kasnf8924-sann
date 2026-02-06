@@ -228,7 +228,9 @@ function ShortSlide({
           loop
           muted={muted}
           poster={
-            short.thumbnail_key ? `/api/shorts/${short.slug}/thumb` : undefined
+            short.thumbnail_key
+              ? `/api/shorts/${short.slug}/thumb?v=${encodeURIComponent(short.thumbnail_key)}`
+              : undefined
           }
           onClick={togglePlay}
         />

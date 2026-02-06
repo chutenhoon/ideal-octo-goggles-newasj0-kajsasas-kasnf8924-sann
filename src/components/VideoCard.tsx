@@ -139,7 +139,9 @@ export default function VideoCard({ video }: { video: VideoItem }) {
     }
   };
 
-  const thumbSrc = `/api/videos/${video.slug}/thumb`;
+  const thumbSrc = video.thumbnail_key
+    ? `/api/videos/${video.slug}/thumb?v=${encodeURIComponent(video.thumbnail_key)}`
+    : `/api/videos/${video.slug}/thumb`;
   const videoVisible = previewActive || (showVideoFallback && fallbackFrameReady);
   const preloadMode =
     shouldLoad && (previewActive || showVideoFallback)

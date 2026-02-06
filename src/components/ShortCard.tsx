@@ -25,7 +25,9 @@ const posterSvg = encodeURIComponent(
 const poster = `data:image/svg+xml,${posterSvg}`;
 
 export default function ShortCard({ short }: { short: ShortItem }) {
-  const thumbSrc = `/api/shorts/${short.slug}/thumb`;
+  const thumbSrc = short.thumbnail_key
+    ? `/api/shorts/${short.slug}/thumb?v=${encodeURIComponent(short.thumbnail_key)}`
+    : `/api/shorts/${short.slug}/thumb`;
   const previewSrc = `/api/shorts/${short.slug}/stream`;
   const displayTitle = short.title.replace(/\s+/g, " ").trim();
   const videoRef = useRef<HTMLVideoElement>(null);

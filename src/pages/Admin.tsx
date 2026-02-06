@@ -312,6 +312,12 @@ function thumbContentType(file: File, ext: string) {
   return EXT_CONTENT_TYPES[ext] || "image/jpeg";
 }
 
+function createThumbPath(ext: string) {
+  const stamp = Date.now().toString(36);
+  const nonce = Math.random().toString(36).slice(2, 8);
+  return `thumb.${stamp}.${nonce}.${ext}`;
+}
+
 function audioExtension(file: File) {
   const ext = file.name.split(".").pop()?.toLowerCase() || "";
   if (
@@ -776,7 +782,7 @@ export default function Admin() {
         setVideoUploadStatus("Uploading thumbnail...");
         thumbKey = await uploadToR2(
           { videoId },
-          `thumb.${ext}`,
+          createThumbPath(ext),
           thumbFile,
           thumbType
         );
@@ -787,7 +793,7 @@ export default function Admin() {
           setVideoUploadStatus("Uploading thumbnail...");
           thumbKey = await uploadToR2(
             { videoId },
-            "thumb.jpg",
+            createThumbPath("jpg"),
             autoThumb,
             "image/jpeg"
           );
@@ -880,7 +886,7 @@ export default function Admin() {
         setShortUploadStatus("Uploading thumbnail...");
         thumbKey = await uploadToR2(
           { shortId },
-          `thumb.${ext}`,
+          createThumbPath(ext),
           shortThumbFile,
           thumbType
         );
@@ -891,7 +897,7 @@ export default function Admin() {
           setShortUploadStatus("Uploading thumbnail...");
           thumbKey = await uploadToR2(
             { shortId },
-            "thumb.jpg",
+            createThumbPath("jpg"),
             autoThumb,
             "image/jpeg"
           );
@@ -1011,7 +1017,7 @@ export default function Admin() {
         setShortUploadStatus("Uploading thumbnail...");
         const thumbKey = await uploadToR2(
           { shortId: editingShortId },
-          `thumb.${ext}`,
+          createThumbPath(ext),
           editShortThumb,
           thumbType
         );
@@ -1134,7 +1140,7 @@ export default function Admin() {
         setVideoUploadStatus("Uploading thumbnail...");
         const thumbKey = await uploadToR2(
           { videoId: editingId },
-          `thumb.${ext}`,
+          createThumbPath(ext),
           editThumb,
           thumbType
         );
@@ -1944,7 +1950,7 @@ export default function Admin() {
               </div>
               {editingSlug && editingThumbKey ? (
                 <img
-                  src={`/api/videos/${editingSlug}/thumb`}
+                  src={`/api/videos/${editingSlug}/thumb?v=${encodeURIComponent(editingThumbKey)}`}
                   alt=""
                   className="h-24 w-40 rounded-lg object-cover border border-white/10"
                 />
@@ -1980,7 +1986,7 @@ export default function Admin() {
                 <div className="flex items-center gap-3">
                   {video.thumb_key ? (
                     <img
-                      src={`/api/videos/${video.slug}/thumb`}
+                      src={`/api/videos/${video.slug}/thumb?v=${encodeURIComponent(video.thumb_key)}`}
                       alt=""
                       className="h-10 w-16 rounded-md object-cover border border-white/10"
                     />
@@ -2161,7 +2167,7 @@ export default function Admin() {
               </div>
               {editingShortSlug && editingShortThumbKey ? (
                 <img
-                  src={`/api/shorts/${editingShortSlug}/thumb`}
+                  src={`/api/shorts/${editingShortSlug}/thumb?v=${encodeURIComponent(editingShortThumbKey)}`}
                   alt=""
                   className="h-24 w-16 rounded-lg object-cover border border-white/10"
                 />
@@ -2197,7 +2203,7 @@ export default function Admin() {
                 <div className="flex items-center gap-3">
                   {short.thumb_key ? (
                     <img
-                      src={`/api/shorts/${short.slug}/thumb`}
+                      src={`/api/shorts/${short.slug}/thumb?v=${encodeURIComponent(short.thumb_key)}`}
                       alt=""
                       className="h-10 w-8 rounded-md object-cover border border-white/10"
                     />

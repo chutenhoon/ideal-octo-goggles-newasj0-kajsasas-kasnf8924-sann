@@ -98,7 +98,7 @@ export default function Watch() {
   }
 
   const posterSrc = data.thumbnail_key
-    ? `/api/videos/${data.slug}/thumb`
+    ? `/api/videos/${data.slug}/thumb?v=${encodeURIComponent(data.thumbnail_key)}`
     : fallbackPoster;
 
   return (
