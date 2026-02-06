@@ -27,6 +27,7 @@ const poster = `data:image/svg+xml,${posterSvg}`;
 export default function ShortCard({ short }: { short: ShortItem }) {
   const thumbSrc = `/api/shorts/${short.slug}/thumb`;
   const previewSrc = `/api/shorts/${short.slug}/stream`;
+  const displayTitle = short.title.replace(/\s+/g, " ").trim();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [previewing, setPreviewing] = useState(false);
 
@@ -54,8 +55,8 @@ export default function ShortCard({ short }: { short: ShortItem }) {
   return (
     <Link
       to={`/shorts/${short.slug}`}
-      className="block group"
-      aria-label={`Open ${short.title}`}
+      className="group flex h-full flex-col"
+      aria-label={`Open ${displayTitle}`}
       onMouseEnter={() => setPreviewing(true)}
       onMouseLeave={() => setPreviewing(false)}
       onFocus={() => setPreviewing(true)}
@@ -71,7 +72,7 @@ export default function ShortCard({ short }: { short: ShortItem }) {
         {short.thumbnail_key ? (
           <img
             src={thumbSrc}
-            alt={short.title}
+            alt={displayTitle}
             loading="lazy"
             className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${
               previewing ? "opacity-0" : "opacity-100"
@@ -88,8 +89,8 @@ export default function ShortCard({ short }: { short: ShortItem }) {
           muted
         />
       </div>
-      <div className="mt-2 text-sm font-medium text-white/90 leading-5 max-h-10 overflow-hidden">
-        {short.title}
+      <div className="mt-2 h-10 overflow-hidden text-sm font-medium leading-5 text-white/90 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] break-words">
+        {displayTitle}
       </div>
     </Link>
   );

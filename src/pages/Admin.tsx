@@ -835,8 +835,8 @@ export default function Admin() {
   const handleCreateShort = async (event: FormEvent) => {
     event.preventDefault();
     const cleanedTitle = shortTitle.trim();
-    if (!cleanedTitle || !shortMp4File || !shortHlsFile) {
-      setError("Title, MP4, and HLS ZIP are required.");
+    if (!cleanedTitle || !shortMp4File) {
+      setError("Title and MP4 are required.");
       return;
     }
 
@@ -885,25 +885,29 @@ export default function Admin() {
         }
       }
 
-      setShortUploadStatus("Extracting HLS ZIP...");
-      const extracted = extractHlsEntries(await unzipFile(shortHlsFile));
-      setShortUploadStatus(`Uploading HLS 0/${extracted.length} files`);
-      await runWithConcurrency(
-        extracted,
-        HLS_CONCURRENCY,
-        async (entry) => {
-          const blob = new Blob([entry.data], { type: entry.contentType });
-          await uploadToR2(
-            { shortId },
-            `hls/${entry.path}`,
-            blob,
-            entry.contentType
-          );
-        },
-        (done, total) => {
-          setShortUploadStatus(`Uploading HLS ${done}/${total} files`);
-        }
-      );
+      let hlsMasterKey = "";
+      if (shortHlsFile) {
+        setShortUploadStatus("Extracting HLS ZIP...");
+        const extracted = extractHlsEntries(await unzipFile(shortHlsFile));
+        setShortUploadStatus(`Uploading HLS 0/${extracted.length} files`);
+        await runWithConcurrency(
+          extracted,
+          HLS_CONCURRENCY,
+          async (entry) => {
+            const blob = new Blob([entry.data], { type: entry.contentType });
+            await uploadToR2(
+              { shortId },
+              `hls/${entry.path}`,
+              blob,
+              entry.contentType
+            );
+          },
+          (done, total) => {
+            setShortUploadStatus(`Uploading HLS ${done}/${total} files`);
+          }
+        );
+        hlsMasterKey = `shorts/${shortId}/hls/index.m3u8`;
+      }
 
       const payload = {
         id: shortId,
@@ -911,7 +915,7 @@ export default function Admin() {
         description: shortDescription.trim() || null,
         pc_key: pcKey,
         thumb_key: thumbKey || undefined,
-        hls_master_key: `shorts/${shortId}/hls/index.m3u8`,
+        hls_master_key: hlsMasterKey,
         size_bytes: shortMp4File.size
       };
 
@@ -2039,7 +2043,7 @@ export default function Admin() {
                 />
               </label>
               <label className="text-xs text-white/50 space-y-1">
-                <span>HLS ZIP (required)</span>
+                <span>HLS ZIP (optional)</span>
                 <input
                   type="file"
                   accept=".zip"
@@ -2047,9 +2051,11 @@ export default function Admin() {
                     setShortHlsFile(event.target.files?.[0] || null)
                   }
                   className="w-full text-sm text-white/70"
-                  required
                 />
               </label>
+            </div>
+            <div className="text-xs text-white/40">
+              HLS ZIP là tùy chọn. Video dài có thể bỏ để tránh file quá nặng.
             </div>
             <button
               type="submit"

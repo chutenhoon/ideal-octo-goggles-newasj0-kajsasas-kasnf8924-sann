@@ -172,11 +172,11 @@ export default function Home() {
                 <div className="text-xs uppercase tracking-[0.4em] text-white/35">
                   Shorts
                 </div>
-                <div className="shorts-scroll flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
+                <div className="shorts-scroll flex items-start gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
                   {filteredShorts.map((short) => (
                     <div
                       key={short.id}
-                      className="w-[160px] sm:w-[180px] md:w-[190px] lg:w-[180px] xl:w-[190px] snap-start"
+                      className="w-[160px] shrink-0 sm:w-[180px] md:w-[190px] lg:w-[180px] xl:w-[190px] snap-start"
                     >
                       <ShortCard short={short} />
                     </div>
