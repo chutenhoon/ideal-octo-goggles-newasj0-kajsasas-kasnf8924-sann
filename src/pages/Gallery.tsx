@@ -71,9 +71,14 @@ export default function Gallery() {
             <div className="text-xs uppercase tracking-[0.4em] text-white/35">
               Shorts
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="shorts-scroll flex items-start gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
               {filteredShorts.map((short) => (
-                <ShortCard key={short.id} short={short} />
+                <div
+                  key={short.id}
+                  className="w-[160px] shrink-0 sm:w-[180px] md:w-[190px] lg:w-[180px] xl:w-[190px] snap-start"
+                >
+                  <ShortCard short={short} />
+                </div>
               ))}
             </div>
           </div>

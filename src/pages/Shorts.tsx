@@ -220,10 +220,10 @@ function ShortSlide({
 
   return (
     <div className="relative h-full w-full flex items-center justify-center">
-      <div className="relative h-full w-full max-w-[420px] md:max-w-[460px] rounded-3xl overflow-hidden bg-black shadow-[0_20px_60px_rgba(0,0,0,0.45)] border border-white/10">
+      <div className="relative isolate h-full w-full max-w-[420px] md:max-w-[460px] rounded-3xl overflow-hidden bg-black shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
         <video
           ref={videoRef}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover rounded-[inherit]"
           playsInline
           loop
           muted={muted}
@@ -232,6 +232,7 @@ function ShortSlide({
           }
           onClick={togglePlay}
         />
+        <div className="pointer-events-none absolute inset-0 rounded-[inherit] ring-1 ring-inset ring-white/10" />
 
         {showSwipeHint ? (
           <div className="pointer-events-none absolute inset-x-0 top-5 z-20 flex justify-center px-4">
