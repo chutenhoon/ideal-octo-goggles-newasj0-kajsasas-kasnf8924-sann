@@ -25,7 +25,7 @@ function normalizeNote(value: unknown) {
 }
 
 export const onRequest: PagesFunction<Env> = async ({ request, env, params }) => {
-  const guard = requireAdmin(request, env);
+  const guard = await requireAdmin(request, env);
   if (guard) return guard;
 
   await ensureAudiosSchema(env);

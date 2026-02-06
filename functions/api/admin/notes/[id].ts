@@ -4,7 +4,7 @@ import { requireAdmin } from "../../../_lib/adminAuth";
 import { ensureNotesSchema } from "../../../_lib/noteSchema";
 
 export const onRequest: PagesFunction<Env> = async ({ request, env, params }) => {
-  const guard = requireAdmin(request, env);
+  const guard = await requireAdmin(request, env);
   if (guard) return guard;
 
   await ensureNotesSchema(env);

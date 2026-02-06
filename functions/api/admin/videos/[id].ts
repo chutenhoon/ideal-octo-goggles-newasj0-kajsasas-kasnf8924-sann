@@ -26,7 +26,7 @@ function prefixFromKey(key?: string | null) {
 }
 
 export const onRequest: PagesFunction<Env> = async ({ request, env, params }) => {
-  const guard = requireAdmin(request, env);
+  const guard = await requireAdmin(request, env);
   if (guard) return guard;
 
   await ensureVideosSchema(env);

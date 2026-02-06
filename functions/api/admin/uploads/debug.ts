@@ -3,11 +3,15 @@ import { errorJson, json } from "../../../_lib/response";
 import { requireAdmin } from "../../../_lib/adminAuth";
 
 export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
+  if (env.ALLOW_ADMIN_UPLOAD_DEBUG !== "1") {
+    return errorJson(404, "Not found.");
+  }
+
   if (request.method !== "GET") {
     return new Response(null, { status: 405 });
   }
 
-  const guard = requireAdmin(request, env);
+  const guard = await requireAdmin(request, env);
   if (guard) return guard;
 
   const accessKeyId = env.R2_S3_ACCESS_KEY_ID || "";

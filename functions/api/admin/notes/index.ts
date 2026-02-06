@@ -11,7 +11,7 @@ function isValidUuid(value: string) {
 }
 
 export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
-  const guard = requireAdmin(request, env);
+  const guard = await requireAdmin(request, env);
   if (guard) return guard;
 
   await ensureNotesSchema(env);

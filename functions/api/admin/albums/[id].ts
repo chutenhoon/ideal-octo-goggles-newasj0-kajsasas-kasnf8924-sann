@@ -5,7 +5,7 @@ import { ensureImagesSchema } from "../../../_lib/imageSchema";
 import { ensureImageAlbumsSchema } from "../../../_lib/imageAlbumSchema";
 
 export const onRequest: PagesFunction<Env> = async ({ request, env, params }) => {
-  const guard = requireAdmin(request, env);
+  const guard = await requireAdmin(request, env);
   if (guard) return guard;
 
   await ensureImagesSchema(env);

@@ -11,7 +11,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
     return new Response(null, { status: 405 });
   }
 
-  const guard = requireAdmin(request, env);
+  const guard = await requireAdmin(request, env);
   if (guard) return guard;
 
   let payload: {
