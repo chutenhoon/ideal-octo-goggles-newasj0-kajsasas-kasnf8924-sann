@@ -236,7 +236,7 @@ function ShortSlide({
         {showSwipeHint ? (
           <div className="pointer-events-none absolute inset-x-0 top-5 z-20 flex justify-center px-4">
             <div className="shorts-swipe-hint rounded-full border border-white/20 bg-black/45 px-4 py-2 text-[11px] font-medium text-white/90 backdrop-blur-md">
-              Vuot len/xuong de xem them Shorts
+              Vuốt lên/xuống để xem thêm Shorts
             </div>
           </div>
         ) : null}
@@ -320,6 +320,14 @@ export default function Shorts() {
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   const initialScrollDone = useRef(false);
 
+  const hideSwipeHint = () => {
+    if (!showSwipeHint) return;
+    setShowSwipeHint(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(SWIPE_HINT_STORAGE_KEY, "1");
+    }
+  };
+
   useEffect(() => {
     initialScrollDone.current = false;
     itemRefs.current = [];
@@ -369,33 +377,25 @@ export default function Shorts() {
 
   useEffect(() => {
     if (!showSwipeHint || activeIndex === 0) return;
-    setShowSwipeHint(false);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(SWIPE_HINT_STORAGE_KEY, "1");
-    }
+    hideSwipeHint();
   }, [activeIndex, showSwipeHint]);
 
-  useEffect(() => {
+  const updateActiveIndexFromScroll = () => {
     const root = containerRef.current;
     if (!root || orderedShorts.length === 0) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const index = Number(entry.target.getAttribute("data-index") || 0);
-            setActiveIndex(index);
-          }
-        });
-      },
-      { root, threshold: 0.75 }
-    );
+    const pageHeight = root.clientHeight;
+    if (!pageHeight) return;
+    const computed = Math.floor((root.scrollTop + pageHeight * 0.5) / pageHeight);
+    const nextIndex = Math.max(0, Math.min(orderedShorts.length - 1, computed));
+    setActiveIndex((prev) => (prev === nextIndex ? prev : nextIndex));
+  };
 
-    itemRefs.current.forEach((el) => {
-      if (el) observer.observe(el);
-    });
-
-    return () => observer.disconnect();
-  }, [orderedShorts]);
+  useEffect(() => {
+    updateActiveIndexFromScroll();
+    const onResize = () => updateActiveIndexFromScroll();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [orderedShorts.length]);
 
   if (isLoading) {
     return (
@@ -438,11 +438,8 @@ export default function Shorts() {
         <div
           ref={containerRef}
           onScroll={() => {
-            if (!showSwipeHint) return;
-            setShowSwipeHint(false);
-            if (typeof window !== "undefined") {
-              window.localStorage.setItem(SWIPE_HINT_STORAGE_KEY, "1");
-            }
+            hideSwipeHint();
+            updateActiveIndexFromScroll();
           }}
           className="shorts-scroll h-[calc(100vh-140px)] md:h-[calc(100vh-160px)] overflow-y-auto snap-y snap-mandatory scroll-smooth overscroll-contain touch-pan-y"
         >
