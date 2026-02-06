@@ -176,7 +176,7 @@ export default function Home() {
                   {filteredShorts.map((short) => (
                     <div
                       key={short.id}
-                      className="min-w-[180px] sm:min-w-[200px] lg:min-w-[220px] snap-start"
+                      className="w-[160px] sm:w-[180px] md:w-[190px] lg:w-[180px] xl:w-[190px] snap-start"
                     >
                       <ShortCard short={short} />
                     </div>
