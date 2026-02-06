@@ -62,26 +62,26 @@ export default function ShortCard({ short }: { short: ShortItem }) {
       onFocus={() => setPreviewing(true)}
       onBlur={() => setPreviewing(false)}
     >
-      <div className="relative aspect-[9/16] overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition-transform duration-300 group-hover:translate-y-[-2px] group-hover:ring-2 group-hover:ring-sky-400/40 group-hover:border-white/20">
+      <div className="relative isolate aspect-[9/16] overflow-hidden rounded-2xl border border-white/10 bg-white/5 [-webkit-mask-image:-webkit-radial-gradient(white,black)] transition-transform duration-300 group-hover:translate-y-[-2px] group-hover:ring-2 group-hover:ring-sky-400/40 group-hover:border-white/20">
         <img
           src={poster}
           alt=""
           aria-hidden="true"
-          className="h-full w-full object-cover"
+          className="block h-full w-full object-cover rounded-[inherit]"
         />
         {short.thumbnail_key ? (
           <img
             src={thumbSrc}
             alt={displayTitle}
             loading="lazy"
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${
+            className={`absolute inset-0 block h-full w-full object-cover rounded-[inherit] transition-opacity duration-200 ${
               previewing ? "opacity-0" : "opacity-100"
             }`}
           />
         ) : null}
         <video
           ref={videoRef}
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${
+          className={`absolute inset-0 block h-full w-full object-cover rounded-[inherit] transition-opacity duration-200 ${
             previewing ? "opacity-100" : "opacity-0"
           }`}
           preload="metadata"

@@ -220,10 +220,10 @@ function ShortSlide({
 
   return (
     <div className="relative h-full w-full flex items-center justify-center">
-      <div className="relative isolate h-full w-full max-w-[420px] md:max-w-[460px] rounded-3xl overflow-hidden bg-black shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
+      <div className="relative isolate h-full w-full max-w-[420px] md:max-w-[460px] rounded-3xl overflow-hidden bg-black shadow-[0_20px_60px_rgba(0,0,0,0.45)] [-webkit-mask-image:-webkit-radial-gradient(white,black)]">
         <video
           ref={videoRef}
-          className="h-full w-full object-cover rounded-[inherit]"
+          className="block h-full w-full object-cover rounded-[inherit]"
           playsInline
           loop
           muted={muted}
