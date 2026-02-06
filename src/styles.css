@@ -47,6 +47,47 @@ body {
     display: none;
   }
 
+  .shorts-scroll-row {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  @media (pointer: coarse) {
+    .shorts-scroll-row {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .shorts-scroll-row::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  @media (pointer: fine) {
+    .shorts-scroll-row {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(196, 221, 255, 0.58) rgba(255, 255, 255, 0.08);
+    }
+
+    .shorts-scroll-row::-webkit-scrollbar {
+      height: 12px;
+    }
+
+    .shorts-scroll-row::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+    }
+
+    .shorts-scroll-row::-webkit-scrollbar-thumb {
+      background: rgba(196, 221, 255, 0.58);
+      border-radius: 999px;
+      border: 2px solid rgba(15, 23, 42, 0.55);
+    }
+
+    .shorts-scroll-row::-webkit-scrollbar-thumb:hover {
+      background: rgba(196, 221, 255, 0.76);
+    }
+  }
+
   input, button, textarea, select {
   font-family: inherit;
 }

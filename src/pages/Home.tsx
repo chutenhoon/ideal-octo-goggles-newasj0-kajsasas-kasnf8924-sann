@@ -173,7 +173,7 @@ export default function Home() {
                 <div className="text-xs uppercase tracking-[0.4em] text-white/35">
                   Shorts
                 </div>
-                <HorizontalScrollRow className="shorts-scroll flex items-start gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
+                <HorizontalScrollRow className="shorts-scroll-row flex items-start gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
                   {filteredShorts.map((short) => (
                     <div
                       key={short.id}

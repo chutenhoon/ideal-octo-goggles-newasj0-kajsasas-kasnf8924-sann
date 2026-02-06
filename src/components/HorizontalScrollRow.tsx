@@ -1,4 +1,4 @@
-import { useRef, useState, type PropsWithChildren } from "react";
+import { useEffect, useRef, useState, type PropsWithChildren } from "react";
 
 type HorizontalScrollRowProps = PropsWithChildren<{
   className?: string;
@@ -11,63 +11,76 @@ export default function HorizontalScrollRow({
   const rowRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef({
-    pointerId: -1,
+    active: false,
     startX: 0,
     startScrollLeft: 0,
     moved: false
   });
   const suppressClickUntilRef = useRef(0);
+  const DRAG_THRESHOLD = 8;
 
-  const startDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.pointerType !== "mouse" || event.button !== 0) return;
+  const startDrag = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
     const element = rowRef.current;
     if (!element) return;
 
-    dragRef.current.pointerId = event.pointerId;
+    dragRef.current.active = true;
     dragRef.current.startX = event.clientX;
     dragRef.current.startScrollLeft = element.scrollLeft;
     dragRef.current.moved = false;
     setDragging(true);
-    try {
-      element.setPointerCapture(event.pointerId);
-    } catch {
-      // Ignore if pointer capture is unavailable.
-    }
   };
 
-  const moveDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (dragRef.current.pointerId !== event.pointerId) return;
-    const element = rowRef.current;
-    if (!element) return;
-
-    const deltaX = event.clientX - dragRef.current.startX;
-    if (!dragRef.current.moved && Math.abs(deltaX) > 4) {
-      dragRef.current.moved = true;
-    }
-    element.scrollLeft = dragRef.current.startScrollLeft - deltaX;
-    event.preventDefault();
-  };
-
-  const stopDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    const element = rowRef.current;
-    if (!element) return;
-    if (dragRef.current.pointerId !== event.pointerId) return;
-
+  const stopDrag = () => {
+    if (!dragRef.current.active) return;
     if (dragRef.current.moved) {
-      suppressClickUntilRef.current = Date.now() + 220;
+      suppressClickUntilRef.current = Date.now() + 200;
     }
-
-    try {
-      if (element.hasPointerCapture(event.pointerId)) {
-        element.releasePointerCapture(event.pointerId);
-      }
-    } catch {
-      // Ignore if pointer capture is unavailable.
-    }
-
-    dragRef.current.pointerId = -1;
+    dragRef.current.active = false;
     dragRef.current.moved = false;
     setDragging(false);
+  };
+
+  useEffect(() => {
+    if (!dragging) return;
+
+    const moveDrag = (event: MouseEvent) => {
+      if (!dragRef.current.active) return;
+      const element = rowRef.current;
+      if (!element) return;
+
+      const deltaX = event.clientX - dragRef.current.startX;
+      if (!dragRef.current.moved && Math.abs(deltaX) < DRAG_THRESHOLD) {
+        return;
+      }
+
+      dragRef.current.moved = true;
+      element.scrollLeft = dragRef.current.startScrollLeft - deltaX;
+      event.preventDefault();
+    };
+
+    const stopDragFromWindow = () => {
+      stopDrag();
+    };
+
+    window.addEventListener("mousemove", moveDrag, { passive: false });
+    window.addEventListener("mouseup", stopDragFromWindow);
+    window.addEventListener("blur", stopDragFromWindow);
+
+    return () => {
+      window.removeEventListener("mousemove", moveDrag);
+      window.removeEventListener("mouseup", stopDragFromWindow);
+      window.removeEventListener("blur", stopDragFromWindow);
+    };
+  }, [dragging]);
+
+  const handleMouseLeave = () => {
+    const element = rowRef.current;
+    if (!element) return;
+    if (!dragRef.current.active) return;
+    if (!element.matches(":hover")) {
+      stopDrag();
+    }
   };
 
   const handleClickCapture = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -94,12 +107,12 @@ export default function HorizontalScrollRow({
   return (
     <div
       ref={rowRef}
-      onPointerDown={startDrag}
-      onPointerMove={moveDrag}
-      onPointerUp={stopDrag}
-      onPointerCancel={stopDrag}
+      onMouseDown={startDrag}
+      onMouseLeave={handleMouseLeave}
+      onMouseUp={stopDrag}
       onClickCapture={handleClickCapture}
       onWheel={handleWheel}
+      onDragStart={(event) => event.preventDefault()}
       className={`${className} ${dragging ? "cursor-grabbing select-none" : "cursor-grab"}`}
     >
       {children}
